@@ -1,0 +1,74 @@
+/**
+ * Copyright (c) 2013 Zhen, LLC. http://zhen.io
+ *
+ * MIT License
+ *
+ * Angular directive that lays out multiple pages and transition between them
+ * http://github.com/zhenjl/angular-pages
+ *
+ */
+
+.zn-animate {
+    -webkit-transform: translate3d(0px, 0, 0);
+    -moz-transform: translate3d(0px, 0, 0);
+    transform: translate3d(0px, 0, 0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-transition: -webkit-transform .2s ease-out;
+    -moz-transition: -moz-transform .2s ease-out;
+    transition: transform .2s ease-out;
+}
+
+.zn-noanimate {
+    -webkit-transition: none;
+    -moz-transition: none;
+    -ms-transition: none;
+    -o-transition: none;
+    transition: none;
+}
+
+.zn-pages-container {
+    overflow: hidden;
+}
+
+.zn-pages-col {
+    height: 100%;
+    width: 100%;
+    display: inline-block;
+    white-space: nowrap;
+    font-size: 0;
+    vertical-align: top;
+}
+
+.zn-pages-row {
+    height: 100%;
+    width: 100%;
+    font-size: 0;
+}
+
+.zn-pages-row li, .zn-pages-col li {
+    list-style-type: none;
+    height: 100%;
+    width: 100%;
+    white-space: normal;
+    vertical-align: top;
+}
+
+.zn-pages-row ul, .zn-pages-col ul {
+    overflow: visible;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    height: 100%;
+    width: 100%;
+    font-size: 0;
+}
+
+.zn-pages-row ul {
+    display: block;
+    white-space: nowrap;
+}
+
+.zn-pages-row li {
+    display: inline-block;
+}
