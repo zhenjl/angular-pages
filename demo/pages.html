@@ -70,12 +70,12 @@
         </div>
     </div>
 
-    <div zn-pages zn-pages-start="2" zn-pages-display="2">
-        <ul zn-pages-start="2">
+    <div zn-pages zn-pages-start="1">
+        <ul zn-pages-start="1">
             <li style="background-color: #1abc9c">info page</li>
             <li style="background-color: #3498db">settings page</li>
         </ul>
-        <ul zn-pages-start="2">
+        <ul zn-pages-start="1">
             <li ng-repeat="val in colors track by $id($index)" style="background-color: {{ val }}; text-align: center; margin: 0 auto">{{ val }}</li>
         </ul>
         <ul>
@@ -124,19 +124,19 @@
             };
 
             $scope.slideLeft = function() {
-                znPagesManager.collection('zn-pages-container-1').slideLeft();
+                znPagesManager.collection('zn-pages-container-0').slideLeft();
             };
 
             $scope.slideRight = function() {
-                znPagesManager.collection('zn-pages-container-1').slideRight();
+                znPagesManager.collection('zn-pages-container-0').slideRight();
             };
 
             $scope.slideDown = function() {
-                znPagesManager.collection('zn-pages-container-1').slideDown();
+                znPagesManager.collection('zn-pages-container-0').slideDown();
             };
 
             $scope.slideUp = function() {
-                znPagesManager.collection('zn-pages-container-1').slideUp();
+                znPagesManager.collection('zn-pages-container-0').slideUp();
             };
         }]);
 
