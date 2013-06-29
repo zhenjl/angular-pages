@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Angular-Pages Pages Demo</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width"/>
+    <link href='../src/angular-pages.css' rel='stylesheet' type='text/css'>
+    <style>
+        * {
+            font-family: arial, sans-serif;
+            font-size: 14px;
+            color: white;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            height: 100%;
+            width: 100%;
+        }
+
+        .zn-pages-container2 {
+            height: 200px;
+            width: 200px;
+            top: 200px;
+            left: 200px;
+            position: absolute;
+            z-index: 10;
+        }
+
+        .zn-pages-container {
+            height: 100%;
+            width: 100%;
+            top: 0;
+            left: 0;
+            position: absolute;
+            z-index: 10;
+        }
+
+        div.control > span, button {
+            color: black;
+        }
+
+        li {
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body ng-app="pagesDemo" ng-controller="pagesDemoController">
+    <!-- a href="https://github.com/zhenjl/angular-pages">
+        <img style="z-index:100;position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_red_aa0000.png" alt="Fork me on GitHub">
+    </a -->
+
+    <div style="z-index: 1000; position: absolute; top: 0; left: 0">
+        <div class="control">
+            <button ng-click="addColor()">add color</button>
+            <button ng-click="prependColor()">prepend color</button>
+            <button ng-click="shiftColor()">delete color</button>
+            <button ng-click="rotateColor()">rotate color</button>
+        </div>
+        <div class="control">
+            <button ng-click="slideLeft()">slide left</button>
+            <button ng-click="slideRight()">slide right</button>
+        </div>
+        <div class="control">
+            <button ng-click="slideUp()">slide up</button>
+            <button ng-click="slideDown()">slide down</button>
+        </div>
+    </div>
+
+    <div zn-pages zn-pages-start="2" zn-pages-display="2">
+        <ul zn-pages-start="2">
+            <li style="background-color: #1abc9c">info page</li>
+            <li style="background-color: #3498db">settings page</li>
+        </ul>
+        <ul zn-pages-start="2">
+            <li ng-repeat="val in colors track by $id($index)" style="background-color: {{ val }}; text-align: center; margin: 0 auto">{{ val }}</li>
+        </ul>
+        <ul>
+            <li style="background-color: #95a5a6">categories</li>
+        </ul>
+    </div>
+
+    <!--div zn-pages="col">
+        <ul zn-pages-start="2">
+            <li style="background-color: #1abc9c">info page</li>
+            <li style="background-color: #3498db">settings page</li>
+        </ul>
+        <ul zn-pages-start="3">
+            <li ng-repeat="val in colors track by $id($index)" style="background-color: {{ val }}; text-align: center; margin: 0 auto">{{ val }}</li>
+        </ul>
+        <ul>
+            <li style="background-color: #95a5a6">categories</li>
+        </ul>
+    </div-->
+
+    <script src="../lib/angular-1.1.5.min.js"></script>
+    <script src="../src/angular-pages.js"></script>
+
+    <script>
+        var app = angular.module("pagesDemo", ['angular-pages']);
+        //var app = angular.module("pagesDemo", []);
+
+        app.controller("pagesDemoController", ['colors', '$scope', '$timeout',
+            'znPagesManager', 'znUtils', function(colors, $scope, $timeout, znPagesManager, znUtils) {
+            $scope.colors = colors.colors;
+
+            $scope.addColor = function() {
+                colors.addColor("#27ae60");
+            };
+
+            $scope.shiftColor = function() {
+                colors.shiftColor();
+            };
+
+            $scope.rotateColor = function() {
+                colors.addColor(colors.shiftColor());
+            };
+
+            $scope.prependColor = function() {
+                colors.prependColor("#27ae60");
+            };
+
+            $scope.slideLeft = function() {
+                znPagesManager.collection('zn-pages-container-1').slideLeft();
+            };
+
+            $scope.slideRight = function() {
+                znPagesManager.collection('zn-pages-container-1').slideRight();
+            };
+
+            $scope.slideDown = function() {
+                znPagesManager.collection('zn-pages-container-1').slideDown();
+            };
+
+            $scope.slideUp = function() {
+                znPagesManager.collection('zn-pages-container-1').slideUp();
+            };
+        }]);
+
+
+        app.factory('colors', function() {
+            var colorsList = ['#9b59b6', '#34495e', '#f1c40f', '#e74c3c'];
+            return {
+                colors: colorsList,
+                prependColor: function(color) {
+                    colorsList.unshift(color);
+                },
+                addColor: function(color) {
+                    colorsList.push(color);
+                },
+                shiftColor: function() {
+                    return colorsList.shift();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
