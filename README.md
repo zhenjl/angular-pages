@@ -1,6 +1,6 @@
 angular-pages
 =============
-Angular directive for managing rows/columns of pages and transitions. http://github.com/zhenjl/angular-pages
+Angular directive for managing rows/columns of pages and transitions. See [Demo](http://zhenjl.github.io/angular-pages)
 
 Let me start by thanking @revolunet for his awesome angular-carousel directive (https://github.com/revolunet/angular-carousel). Angular-pages is heavily inspired by and borrowed heavily from angular-carousel.
 
