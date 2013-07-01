@@ -57,6 +57,7 @@
         <div class="control">
             <button ng-click="addColor()">add color</button>
             <button ng-click="prependColor()">prepend color</button>
+            <br/>
             <button ng-click="shiftColor()">delete color</button>
             <button ng-click="rotateColor()">rotate color</button>
         </div>
@@ -96,6 +97,7 @@
         </ul>
     </div-->
 
+    <script src="../lib/jquery-2.0.2.min.js"></script>
     <script src="../lib/angular-1.1.5.min.js"></script>
     <script src="../src/angular-pages.js"></script>
 
@@ -104,7 +106,7 @@
         //var app = angular.module("pagesDemo", []);
 
         app.controller("pagesDemoController", ['colors', '$scope', '$timeout',
-            'znPagesManager', 'znUtils', function(colors, $scope, $timeout, znPagesManager, znUtils) {
+            'znPageManager', 'Commons', function(colors, $scope, $timeout, znPageManager, Commons) {
             $scope.colors = colors.colors;
 
             $scope.addColor = function() {
@@ -123,23 +125,32 @@
                 colors.prependColor("#27ae60");
             };
 
+            $scope.slidePrev = function() {
+                var a = znPageManager.container("zn-pages-container-0").collection("zn-pages-collection-0-1");
+                a.slidePrev();
+            };
+
+            $scope.slideNext = function() {
+                var a = znPageManager.container("zn-pages-container-0").collection("zn-pages-collection-0-1");
+                a.slideNext();
+            };
+
             $scope.slideLeft = function() {
-                znPagesManager.collection('zn-pages-container-0').slideLeft();
+                znPageManager.container('zn-pages-container-0').slideLeft();
             };
 
             $scope.slideRight = function() {
-                znPagesManager.collection('zn-pages-container-0').slideRight();
+                znPageManager.container('zn-pages-container-0').slideRight();
             };
 
             $scope.slideDown = function() {
-                znPagesManager.collection('zn-pages-container-0').slideDown();
+                znPageManager.container('zn-pages-container-0').slideDown();
             };
 
             $scope.slideUp = function() {
-                znPagesManager.collection('zn-pages-container-0').slideUp();
+                znPageManager.container('zn-pages-container-0').slideUp();
             };
         }]);
-
 
         app.factory('colors', function() {
             var colorsList = ['#9b59b6', '#34495e', '#f1c40f', '#e74c3c'];
