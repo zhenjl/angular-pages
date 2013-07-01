@@ -21,12 +21,47 @@
 
 var app = angular.module("angular-pages", []);
 
-app.directive("znPagesCollection", ['znPagesManager', 'znUtils', function (znPagesManager, znUtils) {
+app.directive("znPagesPage", ['znPageManager', 'Commons', function (znPageManager, Commons) {
+
     return {
         restrict: "A",
         scope: true,
         compile: function (element, attrs) {
-            znUtils.log(3, {
+            Commons.log(3, {
+                "func": "znPagesPage.compile",
+                "arguments": arguments
+            });
+
+            var collectionId = attrs['znPagesCollectionId'] ? attrs['znPagesCollectionId'] : undefined,
+                containerId = attrs['znPagesContainerId'] ? attrs['znPagesContainerId'] : undefined;
+
+            if (containerId === undefined || collectionId === undefined) return;
+
+            var container = znPageManager.container(containerId),
+                collection = container.collection(collectionId);
+
+            if (container === undefined || collection === undefined) return;
+
+            var page = collection.newPage(),
+                pageId = page.getId();
+
+            element.attr("zn-id", pageId);
+
+            return function (scope, element, attrs) {
+                page.attr("width", element[0].getBoundingClientRect().width);
+                page.attr("height", element[0].getBoundingClientRect().height);
+            }
+        }
+    }
+}]);
+
+app.directive("znPagesCollection", ['znPageManager', 'Commons', function (znPageManager, Commons) {
+
+    return {
+        restrict: "A",
+        scope: true,
+        compile: function (element, attrs) {
+            Commons.log(3, {
                 "func": "znPagesCollection.compile",
                 "arguments": arguments
             });
@@ -34,280 +69,214 @@ app.directive("znPagesCollection", ['znPagesManager', 'znUtils', function (znPag
             var children = element.find("li"),
                 ngRepeatElem = angular.element(children[0]),
                 expression = ngRepeatElem.attr('ng-repeat'),
+                containerId = attrs['znPagesContainerId'] ? attrs['znPagesContainerId'] : undefined,
+                container = znPageManager.container(containerId),
+                collection = container.newCollection(),
+                collectionId = collection.getId(),
                 collectionName;
 
-            if (expression != undefined) {
+            if (containerId === undefined || !container) return;
+
+            if (expression !== undefined) {
                 var match = expression.match(/^\s*(.+)\s+in\s+(.*?)\s*(\s+track\s+by\s+(.+)\s*)?$/),
                     lhs = match[1],
                     trackByExp = match[4];
 
                 collectionName = match[2];
                 ngRepeatElem.attr('ng-repeat', lhs + ' in znPagesBuffer track by ' + trackByExp);
-                //ngRepeatElem.addClass('zn-animate');
+            } else {
+                for (var i = 0; i < children.length; i++) {
+                    angular.element(children[i]).attr({
+                        "zn-pages-page": "",
+                        "zn-pages-collection-id": collectionId,
+                        "zn-pages-container-id": containerId
+                    });
+                }
             }
 
+            element.attr("zn-id", collectionId);
+            element.addClass("zn-noanimate");
+
             return function (scope, element, attrs) {
-                znUtils.log(3, {
+                Commons.log(3, {
                     "func": "znPagesCollection.link",
                     "arguments": arguments
                 });
 
-                var collectionId = attrs['znPagesCollectionId'] ? attrs['znPagesCollectionId'] : 0,
-                    parentId = attrs['znPagesContainerId'] ? attrs['znPagesContainerId'] : 0,
-                    layout = attrs['znPagesCollection'] === "col" ? "col" : "row",
+                var layout = attrs['znPagesLayout'] === "col" ? "col" : "row",
                     start = attrs['znPagesStart'] ? Math.max(0, parseInt(attrs['znPagesStart'])) : 0,
-                    collectionElem = element.wrap('<div id="' + collectionId + '" zn-pages-start="' + start + '" class="zn-pages-' + layout + '"></div>').parent(),
-                    children = element.find("li"),
-                    pagesManager = znPagesManager.newCollection(collectionId);
+                    width = element[0].getBoundingClientRect().width,
+                    height = element[0].getBoundingClientRect().height,
+                    ngRepeatCollection = null,
+                    dynamic = false;
 
-                scope.pagesManager = pagesManager;
-
-                pagesManager.attr({
-                    "width": collectionElem[0].getBoundingClientRect().width,
-                    "height": collectionElem[0].getBoundingClientRect().height,
-                    "layout": layout,
-                    "startPage": start,
-                    "totalPages": children.length,
-                    "activePage": start,
-                    "parent": parentId
-                });
-
-                function slideTo(element, page, animate) {
-                    znUtils.log(3, {
-                        "func": "znPagesCollection.link.slideTo",
-                        "arguments": arguments
-                    });
-
-                    animate = (arguments.length < 3) ? true : animate;
-
-                    // Make sure page is within the buffer bound
-                    //page = Math.max(0, Math.min(page, scope.znPagesBuffer.length-1));
-
-                    if (pagesManager.attr("layout") === "row") {
-                        znUtils.slideX(element, -pagesManager.attr("width") * page, animate);
-                    } else {
-                        znUtils.slideY(element, -pagesManager.attr("height") * page, animate);
-                    }
-                }
+                scope.collection = collection;
 
                 if (collectionName) {
-                    pagesManager._updateCollection(scope.$eval(collectionName));
+                    ngRepeatCollection = scope.$eval(collectionName);
+                    dynamic = true;
 
                     scope.$watch(collectionName, function (newValue, oldValue) {
-                        znUtils.log(3, {
-                            "func": "znPagesCollection.link.$watch collectionName",
+                        Commons.log(3, {
+                            "func": "znPagesCollection.link.$watch " + collectionName,
                             "arguments": arguments
                         });
 
-                        if (newValue != undefined && !angular.equals(newValue,oldValue)) {
-                            pagesManager._updateCollection(newValue);
-                            scope.znPagesBuffer = pagesManager._buffer();
-                            slideTo(collectionElem, pagesManager.attr("activeBufferPage"), false);
+                        if (newValue != undefined && !angular.equals(newValue, oldValue)) {
+                            collection.updateBuffer(newValue);
+                            scope.znPagesBuffer = collection.getBuffer();
+
+                            if (collection.width === 0 || collection.height === 0) {
+                                collection.attr({
+                                    "width": element[0].getBoundingClientRect().width,
+                                    "height": element[0].getBoundingClientRect().height
+                                });
+                            }
+
+                            Commons.slideTo(element, collection, false);
                         }
                     }, true);
-
-                    scope.znPagesBuffer = pagesManager._buffer();
                 }
 
-                slideTo(collectionElem, pagesManager.attr("activeBufferPage"), false);
+                collection.attr({
+                    "width": width,
+                    "height": height,
+                    "layout": layout,
+                    "startPage": start,
+                    "activeIndex": start,
+                    "parent": containerId,
+                    "dynamic": dynamic,
+                    "collection": ngRepeatCollection
+                });
 
-                scope.$watch("pagesManager._hasMoved()", function(newValue, oldValue) {
-                    // newValue and oldValue are undefined when it's triggered the first time
-                    // so let's ignore that
+                if (collection.isDynamic()) {
+                    collection.updateBuffer();
+                    scope.znPagesBuffer = collection.getBuffer();
+                }
+
+                Commons.slideTo(element, collection, false);
+
+                scope.$watch("collection.hasMoved()", function(newValue, oldValue) {
+                    Commons.log(2, {
+                        "func": "znPagesCollection.$watch collection.hasMoved()",
+                        "arguments": arguments,
+                        "collection": collection
+                    });
 
                     if (newValue != undefined && newValue !== oldValue) {
-                        znUtils.log(3, {
-                            "func": "znPagesCollection.link.$watch pagesManager._hasMoved()",
-                            "arguments": arguments
-                        });
-
-                        // The new active page should be the old active page + the pages moved
-                        // Also making sure the new active page is within buffer bound
-
-                        if (pagesManager._isDynamic()) {
-                            slideTo(collectionElem,
-                                Math.max(0,
-                                    Math.min(pagesManager.attr("activeBufferPage")+pagesManager._pagesMoved(),
-                                        pagesManager._buffer().length-1)),
-                                true);
-                        } else {
-                            slideTo(collectionElem,
-                                Math.max(0,
-                                    Math.min(pagesManager.attr("activeBufferPage")+pagesManager._pagesMoved(),
-                                        pagesManager._totalPages()-1)),
-                                true);
-                        }
+                        Commons.slideTo(element, collection, true);
+                        collection.updateBuffer();
                     }
                 });
 
                 // the transitionEnd event listener only gets executed when there's animation
                 // If animation is set to none, then this will not get called
 
-                collectionElem[0].addEventListener(znUtils.whichTransitionEvent(), function(event) {
-                    if (event.target.id.match("^zn-pages-collection")) {
+                element[0].addEventListener(Commons.whichTransitionEvent(), function(event) {
+                    Commons.log(2, event, typeof event.target.attributes['zn-id']);
+
+                    if (event.target.getAttribute('zn-id').match(/^zn-pages-collection/)) {
                         scope.$apply(function() {
-                            znUtils.log(3, {
+                            Commons.log(2, {
                                 "func": "znPagesCollection.link.addEventListener transitionEnd",
                                 "arguments": arguments
                             });
 
-                            var pagesManager = scope.pagesManager,
-                                pagesMoved = pagesManager._pagesMoved();
+                            var collection = scope.collection,
+                                numMoved = collection.attr("numMoved");
 
-                            if (pagesManager._isDynamic()) {
-                                var newBuffer = pagesManager._updateBuffer(pagesMoved),
-                                    activeBufferPage = pagesManager.attr("activeBufferPage");
+                            if (collection.isDynamic()) {
+                                var newBuffer = collection.getBuffer(),
+                                    activeBufferIndex = collection.attr("activeBufferIndex");
 
-                                // If we moved to previous page (pagesMoved == -1), and the new buffer and
-                                // the old buffer are the same, then it means we are at the top of the collection.
-                                // So let's not do anything.
+                                // If the new buffer and the old buffer are the same, then it means we are at
+                                // the top of the collection. So let's not do anything.
                                 //
                                 // However, if the buffers are different, then let's make sure it's displaying the
                                 // the updated active page, which should be the same page content as before, assuming
                                 // the same page content exist in the new buffer
 
-                                if (!(pagesMoved < 0 && angular.equals(newBuffer, scope.znPagesBuffer))) {
+                                if (!angular.equals(newBuffer, scope.znPagesBuffer)) {
                                     scope.znPagesBuffer = newBuffer;
-                                    slideTo(collectionElem, activeBufferPage, false);
+                                    Commons.slideTo(element, collection, false);
                                 }
-                            } else {
-                                pagesManager.attr('activePage', Math.max(0,
-                                    Math.min(pagesManager.attr("activePage")+pagesManager._pagesMoved(),
-                                        pagesManager._totalPages()-1)));
                             }
                         });
                     }
-                }, false)
+                }, false);
             }
         }
     }
 }]);
 
-app.directive("znPages", ["znSwipe", 'znPagesManager', 'znUtils', function (znSwipe, znPagesManager, znUtils) {
-    var containerCount = 0;
+app.directive("znPages", ["znSwipe", 'znPageManager', 'Commons', function (znSwipe, znPageManager, Commons) {
 
     return {
         restrict: "A",
         scope: true,
         compile: function (element, attrs) {
-            znUtils.log(3, {
+            Commons.log(3, {
                 "func": "znPages.compile",
                 "arguments": arguments
             });
 
             var layout = attrs['znPages'] === "col" ? attrs['znPages'] : "row",
-                containerId = 'zn-pages-container-' + containerCount,
-                children = element.find("ul");
+                children = element.find("ul"),
+                container = znPageManager.newContainer(),
+                containerId = container.getId();
 
             element.addClass('zn-pages-container');
 
-            angular.forEach(children, function (child, index) {
-                angular.element(child).attr({
-                    'zn-pages-collection': layout,
+            for (var i = 0; i < children.length; i++) {
+                var e = angular.element(children[i]),
+                    start = e.attr("zn-pages-start") ? e.attr("zn-pages-start") : 0,
+                    colElem = e.wrap('<div></div>').parent();
+
+                colElem.attr({
+                    'zn-pages-collection': "",
                     'zn-pages-container-id': containerId,
-                    'zn-pages-collection-id': 'zn-pages-collection-' + containerCount + '-' + index
-                })
-            });
+                    'zn-pages-layout': layout,
+                    'zn-pages-start': start
+                });
 
-            element.html('<div id="' + containerId + '" class="zn-pages-' + layout + '">' + element.html() + '</div>');
+                colElem.addClass("zn-pages-" + layout);
+            }
 
-            containerCount++;
+            element.html('<div zn-id="' + containerId + '" class="zn-pages-' + layout + ' zn-noanimate">' + element.html() + '</div>');
 
-            return function(scope, element, attrs) {
-                znUtils.log(3, {
+            return function (scope, element, attrs) {
+                Commons.log(3, {
                     "func": "znPages.link",
                     "arguments": arguments
                 });
 
-                // We are using collection manager to manage container movement as well
-                // Assumption here is the container collection is not ng-repeat/dynamic collection
+                scope.container = container;
 
-                var layout = attrs['znPages'] === "col" ? "col" : "row",
-                    start = attrs['znPagesStart'] ? Math.max(0, parseInt(attrs['znPagesStart'])) : 0,
-                    uls = element.find("ul"),
+                var start = attrs['znPagesStart'] ? Math.max(0, parseInt(attrs['znPagesStart'])) : 0,
                     containerElem = angular.element(element.children()[0]), // the newly added div container
-                    containerId = containerElem.attr('id'),
-                    pagesManager = znPagesManager.newCollection(containerId);
+                    childrenElem = containerElem.children();
 
-                scope.pagesManager = pagesManager;
-
-                pagesManager.attr({
+                container.attr({
                     "width": containerElem[0].getBoundingClientRect().width,
                     "height": containerElem[0].getBoundingClientRect().height,
                     "layout": layout,
                     "start": start,
-                    "totalPages": uls.length,
-                    "activePage": start
+                    "activeIndex": start
                 });
 
-                var children = containerElem.children(),
-                    childrenIDs = [],
-                    childrenElem = {};
+                Commons.slideTo(containerElem, container, false);
 
-                for (var i = 0; i < children.length; i++) {
-                    var e = angular.element(children[i]),
-                        id = e.attr("id");
-                    childrenIDs.push(id);
-                    childrenElem[id] = e;
-                }
-
-                pagesManager.attr("children", childrenIDs);
-
-                function slideTo(element, page, animate) {
-                    znUtils.log(3, {
-                        "func": "znPages.link.slideTo",
+                scope.$watch("container.hasMoved()", function(newValue, oldValue) {
+                    Commons.log(2, {
+                        "func": "znPages.$watch container.hasMoved()",
                         "arguments": arguments
                     });
 
-                    animate = (arguments.length < 3) ? true : animate;
-
-                    // Make sure page is within the buffer bound
-                    //page = Math.max(0, Math.min(page, scope.znPagesBuffer.length-1));
-
-                    if (pagesManager.attr("layout") === "row") {
-                        znUtils.slideY(element, -pagesManager.attr("height") * page, animate);
-                    } else {
-                        znUtils.slideX(element, -pagesManager.attr("width") * page, animate);
-                    }
-                }
-
-                slideTo(containerElem, Math.max(0, Math.min(pagesManager.attr("activeBufferPage"), pagesManager._totalPages()-1)), false);
-
-                scope.$watch("pagesManager._hasMoved()", function(newValue, oldValue) {
-                    // newValue and oldValue are undefined when it's triggered the first time
-                    // so let's ignore that
-
                     if (newValue != undefined && newValue !== oldValue) {
-                        znUtils.log(3, {
-                            "func": "znPages.link.$watch pagesManager._hasMoved()",
-                            "arguments": arguments
-                        });
-
-                        // The new active page should be the old active page + the pages moved
-                        // Also making sure the new active page is within buffer bound
-
-                        slideTo(containerElem, Math.max(0, Math.min(pagesManager.attr("activeBufferPage")+pagesManager._pagesMoved(), pagesManager._totalPages() - 1)), true);
+                        Commons.slideTo(containerElem, container, true);
+                        container.updateBuffer();
                     }
                 });
-
-                containerElem[0].addEventListener(znUtils.whichTransitionEvent(), function(event) {
-                    if (event.target.id.match("^zn-pages-container")) {
-                        scope.$apply(function() {
-                            znUtils.log(3, {
-                                "func": "znPages.link.addEventListener transitionEnd",
-                                "arguments": arguments
-                            });
-
-                            var pagesManager = scope.pagesManager;
-
-                            pagesManager.attr('activePage', Math.max(0,
-                                Math.min(pagesManager.attr("activePage")+pagesManager._pagesMoved(),
-                                    pagesManager._totalPages()-1)));
-
-                        });
-                    }
-
-                }, false);
 
                 var startPos,            // coordinates of the last position
                     moveX;              // moving horizontally (X) or vertically (!X)
@@ -321,7 +290,7 @@ app.directive("znPages", ["znSwipe", 'znPagesManager', 'znUtils', function (znSw
                     move: function(coords) {
                         if (!startPos) return;
 
-                        var pagesManager = scope.pagesManager;
+                        var pageManager = scope.pageManager;
 
                         if (moveX === undefined) {
                             var totalX = Math.abs(coords.x - startPos.x),
@@ -336,35 +305,33 @@ app.directive("znPages", ["znSwipe", 'znPagesManager', 'znUtils', function (znSw
 
                             if (layout === "col") {
                                 e = containerElem;
-                                cm = pagesManager;
+                                cm = container;
                             } else {
-                                childId = pagesManager.attr("children")[pagesManager.attr("activePage")];
-                                e = childrenElem[childId];
-                                cm = znPagesManager.collection(childId);
+                                cm = container.attr("collections")[container.attr("activeIndex")];
+                                e = angular.element(childrenElem[container.attr("activeIndex")]);
                             }
 
-                            active = cm.attr("activeBufferPage");
-                            ratio = ((cm._isHead() && offset > 0) || (cm._isTail() && offset < 0)) ? 3 : 1;
+                            active = cm.attr("activeBufferIndex");
+                            ratio = ((cm.isHead() && offset > 0) || (cm.isTail() && offset < 0)) ? 3 : 1;
                             newX = -cm.attr("width") * active + Math.round(offset / ratio);
 
-                            znUtils.slideX(e, newX, false);
+                            Commons.slideX(e, newX, false);
                         } else {
                             offset = coords.y - startPos.y;
 
                             if (layout === "col") {
-                                 childId = pagesManager.attr("children")[pagesManager.attr("activePage")];
-                                e = childrenElem[childId];
-                                cm = znPagesManager.collection(childId);
+                                cm = container.attr("collections")[container.attr("activeIndex")];
+                                e = angular.element(childrenElem[container.attr("activeIndex")]);
                             } else {
                                 e = containerElem;
-                                cm = pagesManager;
+                                cm = container;
                             }
 
-                            active = cm.attr("activeBufferPage");
-                            ratio = ((cm._isHead() && offset > 0) || (cm._isTail() && offset < 0)) ? 3 : 1;
+                            active = cm.attr("activeBufferIndex");
+                            ratio = ((cm.isHead() && offset > 0) || (cm.isTail() && offset < 0)) ? 3 : 1;
                             newY = -cm.attr("height") * active + Math.round(offset / ratio);
 
-                            znUtils.slideY(e, newY, false);
+                            Commons.slideY(e, newY, false);
                         }
                     },
 
@@ -376,39 +343,37 @@ app.directive("znPages", ["znSwipe", 'znPagesManager', 'znUtils', function (znSw
                                 childId = null,
                                 delta = 0,
                                 move = false,
-                                pagesManager = scope.pagesManager;
+                                container = scope.container;
 
                             if (moveX) {
                                 if (layout === "col") {
-                                    cm = pagesManager;
+                                    cm = container;
                                 } else {
-                                    childId = pagesManager.attr("children")[pagesManager.attr("activePage")];
-                                    cm = znPagesManager.collection(childId);
+                                    cm = container.attr("collections")[container.attr("activeIndex")];
                                 }
 
                                 delta = coords.x - startPos.x;
                                 move = Math.abs(delta) >= cm.attr("width") * 0.1;
 
-                                if ((cm._isHead() && delta > 0) || (cm._isTail() && delta < 0) || !move) {
-                                    cm._hasMoved(0);
+                                if ((cm.isHead() && delta > 0) || (cm.isTail() && delta < 0) || !move) {
+                                    cm.slideReset();
                                 } else {
-                                    delta > 0 ? pagesManager.slideRight() : pagesManager.slideLeft();
+                                    delta > 0 ? container.slideRight() : container.slideLeft();
                                 }
                             } else {
                                 if (layout === "col") {
-                                    childId = pagesManager.attr("children")[pagesManager.attr("activePage")];
-                                    cm = znPagesManager.collection(childId);
+                                    cm = container.attr("collections")[container.attr("activeIndex")];
                                 } else {
-                                    cm = pagesManager;
+                                    cm = container;
                                 }
 
                                 delta = coords.y - startPos.y;
                                 move = Math.abs(delta) >= cm.attr("height") * 0.1;
 
-                                if ((cm._isHead() && delta > 0) || (cm._isTail() && delta < 0) || !move) {
-                                    cm._hasMoved(0);
+                                if ((cm.isHead() && delta > 0) || (cm.isTail() && delta < 0) || !move) {
+                                    cm.slideReset();
                                 } else {
-                                    delta < 0 ? pagesManager.slideUp() : pagesManager.slideDown();
+                                    delta < 0 ? container.slideUp() : container.slideDown();
                                 }
                             }
                         });
@@ -425,570 +390,560 @@ app.directive("znPages", ["znSwipe", 'znPagesManager', 'znUtils', function (znSw
     }
 }]);
 
-app.factory("znPagesManager", ['znUtils', function (znUtils) {
-    var _collections = {};
+app.service("znPageManager", ['Commons', function (Commons) {
+    var containers = [];
 
-    function PagesManager(id, collection) {
-        znUtils.log(3, {
-            "func": "PagesManager.constructor",
-            "arguments": arguments
-        });
+    /**
+     * @ngdoc object
+     * @name PageManager.Page
+     *
+     * @description
+     *
+     */
 
-        this._options = {
-            id: id,                         // Collection ID
-            startPage: -1,                  // Starting page number
-            collection: null,               // Original item collection that's ng-repeat'ed
-            collectionKeys: null,           // The keys to the collection, = collection if array, = keys if object
-            totalPages: 0,                  // Total number of pages in this collection
-            buffer: [],                     // The current buffer being displayed, size = 3
-            bufferStart: -1,                // The starting position of the buffer relative to collectionKeys
-            bufferSize: 3,                  // Size of the buffer to start, TODO: allow change of this later
-            activeBufferPage: -1,           // The buffer page being displayed
-            activeBufferKey: null,          // The buffer page key being displayed
-            activePage: -1,                  // The active page in the collection
-            moved: 0,                   // Did we update the buffer?
-            pagesMoved: 0                   // Number of pages moved
+    function Page(id, dynamic) {
+        var _options = {
+            id: id,                             // The page ID
+            width: 0,                           // Page width
+            height: 0,                          // Page height
+            parent: null,                       // The collection holding this page
         };
 
-        this._collections = _collections;
-
-        if (collection) {
-            this._updateCollection(collection);
-        }
+        angular.extend(this, _options);
     }
 
-    PagesManager.prototype._updateCollection = function(collection) {
-        znUtils.log(3, {
-            "func": "PagesManager._updateCollection",
-            "arguments": arguments
-        });
+    Page.prototype.attr = Commons.attr;
 
-        var collectionKeys = [];
+    Page.prototype.getId = function () {
+        return "zn-pages-page-" + this.id;
+    };
 
-        if (collection == undefined) {
-            return
+    /**
+     * @ngdoc object
+     * @name PageManager.Collection
+     *
+     * @description
+     *
+     */
+
+    function Collection(id) {
+        var _options = {
+            id: id,                             // ID of the page collection
+            pages: [],                          // List of Page objects
+            activeIndex: 0,                      // Current active page
+            buffer: [],                         // display buffer for the collection
+            bufferSize: 3,                      // Display buffer size
+            activeBufferIndex: 0,                // Current active page of the display buffer
+            parent: null,                       // The container holding this collection
+            dynamic: false,                     // The collection is dynamic
+            collection: null,                   // The dynamic collection,
+            numMoved: 0,                        // The number of pages moved
+            moved: 0,                        // The collection has moved
+            height: 0,
+            width: 0,
+            layout: "row"
+        };
+
+        for (var i in _options) this[i] = _options[i];
+        //angular.extend(this, _options);
+    }
+
+    Collection.prototype.attr = Commons.attr;
+
+    Collection.prototype.newPage = function () {
+        var page = new Page(this.id + "-" + this.pages.length);
+        this.pages.push(page);
+        return page;
+    };
+
+    Collection.prototype.getId = function () {
+        return "zn-pages-collection-" + this.id;
+    };
+
+    Collection.prototype.isDynamic = function () {
+        return this.dynamic;
+    };
+
+    Collection.prototype.isHead = function () {
+        return this.activeIndex === 0;
+    };
+
+    Collection.prototype.isTail = function () {
+        return this.activeIndex === this.length()-1;
+    };
+
+    Collection.prototype.getBuffer = function () {
+        return this.buffer;
+    };
+
+    Collection.prototype.bufferLength = function () {
+        return this.isDynamic() ? this.buffer.length : this.pages.length;
+    };
+
+    Collection.prototype.length = function () {
+        return this.isDynamic() ? this.collection.length : this.pages.length;
+    };
+
+    Collection.prototype.hasMoved = function() {
+        return this.moved;
+    };
+
+    Collection.prototype.slideReset = function() {
+        this.moved++;
+    };
+
+    Collection.prototype.slidePrev = function() {
+        this.numMoved = -1;
+        this.moved++;
+    };
+
+    Collection.prototype.slideNext = function() {
+        this.numMoved = 1;
+        this.moved++;
+    };
+
+    Collection.prototype.updateBuffer = function (collection) {
+        if (!this.isDynamic()) {
+            var active = Math.max(0, Math.min(this.activeIndex+this.numMoved, this.pages.length-1));
+            this.activeIndex = active;
+            this.activeBufferIndex = active;
+            return;
         }
+
+        if (collection) this.collection = collection;
+        if (this.collection === undefined) return;
+
+        var collectionKeys = [], bufferStart, bufferEnd, bufferKeys = [], activeBufferIndex, active;
 
         // Get the list of updated keys, and see if we can find the current key in the update list
         // If collection is an array then just use that
         // If collection is an object map, then extract the keys and sort that
 
-        if (angular.isArray(collection)) {
-            collectionKeys = collection;
+        if (angular.isArray(this.collection)) {
+            collectionKeys = this.collection;
         } else {
-            for (var key in collection) {
-                if (collection.hasOwnProperty(key) && key.charAt(0) != '$') {
+            for (var key in this.collection) {
+                if (this.collection.hasOwnProperty(key) && key.charAt(0) != '$') {
                     collectionKeys.push(key);
                 }
             }
-
             collectionKeys.sort();
         }
 
-        // Save the parameters
-        this._options.collectionKeys = collectionKeys;
-        this._options.collection = collection;
-        this._options.totalPages = collectionKeys.length;
-
-        // Update the display buffer based on the updated collection
-        this._updateBuffer();
-    };
-
-    PagesManager.prototype._getKeyPosition = function(key) {
-        znUtils.log(3, {
-            "func": "PagesManager._getKeyPosition",
-            "arguments": arguments
-        });
-
-        // Go through the collection and find the item that matches what's currently being
-        // displayed, and update the current page number to the new location of displayed item
-
-        if (this._options.collectionKeys != undefined && key != undefined) {
-            for (var i = 0; i < this._options.collectionKeys.length; i++) {
-                if (this._options.collectionKeys[i] === key) {
-                    return i;
+        if (angular.isArray(this.buffer)) {
+            bufferKeys = this.buffer;
+        } else {
+            for (var key in this.buffer) {
+                if (this.buffer.hasOwnProperty(key) && key.charAt(0) != '$') {
+                    bufferKeys.push(key);
                 }
             }
+            bufferKeys.sort();
         }
 
-        return -1;
-    };
-
-    // Create the buffer for display. Buffer size is 3.
-    //
-    // TODO: Allow buffer size change
-    PagesManager.prototype._updateBuffer = function(change) {
-        znUtils.log(3, {
-            "func": "PagesManager._updateBuffer",
-            "arguments": arguments
-        });
-
-        var _o = this._options;
-
-        // No collection defined, can't setup the buffer, leaving
-        if (!_o.collectionKeys) {
-            return;
-        }
-
-        var bufferStart, bufferEnd, bufferKeys, activeBufferPage, active;
-
-        if (_o.buffer.length === 0) {
+        if (this.buffer.length === 0) {
             // buffer size is 0 means there's nothing in the buffer, most likely never set, so let's set
             // it up using the start page.
 
-            active = this._startPage();
-        } else if (_o.collectionKeys[_o.activeBufferPage] !== _o.activeBufferKey) {
+            active = this.startPage;
+            Commons.log(2, "=== 0 ----> " + active);
+        } else if (collectionKeys[this.activeIndex] !== bufferKeys[this.activeBufferIndex]) {
             // If the actual key in the collection pointed to by the page index in the collection
             // is no longer the same as the saved key, then we know the array has shifted and positions
             // have been changed. So let's find the new index for the saved key, and keep the saved key
             // in the current display, and update the buffer around it
 
-            active = this._getKeyPosition(_o.activeBufferKey);
+            for (var i = 0; i < collectionKeys.length; i++) {
+                if (collectionKeys[i] === bufferKeys[this.activeBufferIndex]) {
+                    active = i;
+                }
+            }
+
+            if (active === undefined) active = this.startPage;
+            Commons.log(2, "keys !== ----> " + active);
         } else {
             // By now, we know the buffer has been set before, and that the saved key is the same
             // as the collection key that's pointed to by the page index, then we just keep
             // the same active key and just update the buffer around it
 
-            active = _o.activeBufferPage;
+            active = this.activeIndex;
+            Commons.log(2, "or else ----> " + active);
         }
 
         // active should be previous_active + change
-        active = Math.max(0, Math.min(active+(change ? change : 0), _o.totalPages-1));
+        active = Math.max(0, Math.min(active + this.numMoved, collectionKeys.length - 1));
+        bufferStart = Math.max(0, Math.min(active - 1, collectionKeys.length - 1));
+        activeBufferIndex = active - bufferStart;
+        bufferEnd = bufferStart + this.bufferSize;
+        bufferKeys = collectionKeys.slice(bufferStart, bufferEnd);
 
-        // - If the active page is 0, which means it's the beginning, then the bufferStart has to
-        //   be 0 as well
-        // - If the active page is greater than 0, then let's start the buffer at one element
-        //   before the active page, so the displaying page is always in the middle of the buffer
-        // - Technically we should never see start < 0
-
-        bufferStart = Math.max(0, Math.min(active-1, _o.totalPages-1));
-        activeBufferPage = active - bufferStart;
-        bufferEnd = bufferStart + this._options.bufferSize;
-        bufferKeys = this._options.collectionKeys.slice(bufferStart, bufferEnd);
-
+        Commons.log(2, {
+            loc: "znPagesCollection.updateBuffer",
+            active: active,
+            bufferStart: bufferStart,
+            activeBufferIndex: activeBufferIndex,
+            bufferEnd: bufferEnd,
+            numMoved: this.numMoved
+        })
         // Create the display buffer, return either array or object map depending on the
         // original collection
 
-        if (angular.isArray(this._options.collection)) {
-            this._options.buffer = bufferKeys;
+        if (angular.isArray(this.collection)) {
+            this.buffer = bufferKeys;
         } else {
-            this._options.buffer = {};
+            this.buffer = {};
 
             for (var i = 0; i < bufferKeys.length; i++) {
                 var key = bufferKeys[i];
-                this._options.buffer[key] = this._options.collection[key];
+                this.buffer[key] = this.collection[key];
             }
         }
 
-        this._options.bufferStart = bufferStart;
-        this._options.activeBufferPage = activeBufferPage;
-        this._options.activePage = active;
-        this._options.activeBufferKey = this._options.buffer[activeBufferPage];
+        this.activeBufferIndex = activeBufferIndex;
+        this.activeIndex = active;
+        this.numMoved = 0;
 
-        return this._options.buffer;
+        Commons.log(2, {
+            loc: "znPagesCollection.updateBuffer -----",
+            numMoved: this.numMoved
+        })
+        return this.buffer;
     };
 
-    // Set or get attributes for the collection manager
-    PagesManager.prototype.attr = function(name, value) {
-        znUtils.log(3, {
-            "func": "PagesManager.attr",
+    /**
+     * @ngdoc object
+     * @name PageManager.Container
+     *
+     * @description
+     *
+     */
+
+    function Container(id) {
+        var _options = {
+            id: id,                             // ID of the page container
+            collections: [],                    // List of Collection objects
+            activeIndex: 0,                     // Current active collection
+            activeBufferIndex: 0,               // Current active collection
+            numMoved: 0,                        // The number of pages moved
+            moved: 0,                        // The collection has moved
+            height: 0,
+            width: 0,
+            layout: "row"
+        };
+
+        angular.extend(this, _options);
+    }
+
+    Container.prototype.attr = Commons.attr;
+
+    Container.prototype.newCollection = function () {
+        var col = new Collection(this.id + "-" + this.collections.length);
+        this.collections.push(col);
+        return col;
+    };
+
+    Container.prototype.getId = function () {
+        return "zn-pages-container-" + this.id;
+    };
+
+    Container.prototype.isHead = function () {
+        return this.activeIndex === 0;
+    };
+
+    Container.prototype.isTail = function () {
+        return this.activeIndex === this.length()-1;
+    };
+
+    Container.prototype.length = function () {
+        return this.collections.length;
+    };
+
+    Container.prototype.collection = function (id) {
+        for (var i = 0; i < this.collections.length; i++) {
+            if (this.collections[i].getId() === id) {
+                return this.collections[i];
+            }
+        }
+    };
+
+    Container.prototype.bufferLength = function() {
+        return this.length();
+    }
+
+    Container.prototype.hasMoved = function() {
+        return this.moved;
+    }
+
+    Container.prototype.slideReset = function() {
+        this.moved++;
+    };
+
+    Container.prototype.slidePrev = function() {
+        this.numMoved = -1;
+        this.moved++;
+    };
+
+    Container.prototype.slideNext = function() {
+        this.numMoved = 1;
+        this.moved++;
+    };
+
+    Container.prototype.updateBuffer = function () {
+        var active = Math.max(0, Math.min(this.activeIndex+this.numMoved, this.collections.length-1));
+        this.activeIndex = active;
+        this.activeBufferIndex = active;
+    };
+
+    Container.prototype.slideLeft = function() {
+        Commons.log(3, {
+            "func": "Container.slideLeft",
             "arguments": arguments
         });
 
-        if (angular.isObject(name)) {
-            // if the name is a object map, then loop through the properties and set them individually
-
-            for (var i in name) {
-                if (name.hasOwnProperty(i)) this.attr(i, name[i]);
-            }
-        } else if (name != undefined && value != undefined) {
-            // if both parameters exist, then we assume we are setting an attribute
-            // For a couple of the properties we do some special treatment
-            // Otherwise we just save the properties
-            if (name === "collection") {
-                this._updateCollection(value);
-            } else if (name === "start" || name === "startIndex" || name === "startPage") {
-                this._startPage(value);
-            } else if (name === "activePage") {
-                this._options[name] = value;
-
-                // If this is NOT a dynamic collection, i.e., non-ng-repeat, then let's keep
-                // the activePage and activeBufferPage the same
-                if (!this._isDynamic()) this._options.activeBufferPage = value;
-            } else {
-                this._options[name] = value;
-            }
-        } else if (name != undefined) {
-            // if name is defined and value is undefined, then we assume we are retrieving
-            // a parameter, so that's what we will do
-            return this._options[name];
+        // 1. If column layout, slide left means showing column on right
+        // 2. If row layout, slide left means showing the page on the right of the active row
+        if (this.layout === "col") {
+            this.slideNext();
         } else {
-            // if all else fails, return undefined
-            return undefined;
+            this.collections[this.activeIndex].slideNext();
         }
     };
 
-    PagesManager.prototype._isDynamic = function() {
-        znUtils.log(3, {
-            "func": "PagesManager._isDynamic",
+    Container.prototype.slideRight = function() {
+        Commons.log(3, {
+            "func": "Container.slideRight",
             "arguments": arguments
         });
 
-        return (this._options.collection != null);
-    };
-
-    PagesManager.prototype._isHead = function() {
-        znUtils.log(3, {
-            "func": "PagesManager._isDynamic",
-            "arguments": arguments
-        });
-
-        return (this._options.activePage === 0);
-    };
-
-    PagesManager.prototype._isTail = function() {
-        znUtils.log(3, {
-            "func": "PagesManager._isDynamic",
-            "arguments": arguments
-        });
-
-        return (this._options.activePage === (this._options.totalPages-1));
-    };
-
-    PagesManager.prototype._buffer = function() {
-        znUtils.log(3, {
-            "func": "PagesManager._buffer",
-            "arguments": arguments
-        });
-
-        return this.attr("buffer");
-    };
-
-    PagesManager.prototype._hasMoved = function(moved) {
-        znUtils.log(3, {
-            "func": "PagesManager._hasMoved",
-            "arguments": arguments
-        });
-
-        if (moved != undefined) {
-            this._options.pagesMoved = moved;
-            this._options.moved++;
-        }
-
-        return this._options.moved;
-    };
-
-    PagesManager.prototype._pagesMoved = function() {
-        znUtils.log(3, {
-            "func": "PagesManager.pagesMoved",
-            "arguments": arguments
-        });
-
-        return this._options.pagesMoved;
-    };
-
-    PagesManager.prototype._startPage = function(start) {
-        znUtils.log(3, {
-            "func": "PagesManager._startPage",
-            "arguments": arguments
-        });
-
-        if (start != undefined) {
-            this._options.startPage = start;
-        }
-
-        return Math.max(0, Math.min(this._options.startPage, this._options.totalPages-1));
-    };
-
-    PagesManager.prototype._totalPages = function(pages) {
-        znUtils.log(3, {
-            "func": "PagesManager._totalPages",
-            "arguments": arguments
-        });
-
-        // if we are setting the total pages, we also need to update the start page because the
-        // user may have set the start page before setting the total pages. If they did that,
-        // the start page may not be correct as it was bounded to be no bigger than the total page
-
-        if (pages != undefined) {
-            this.attr("totalPages", pages);
-        }
-        return this.attr("totalPages");
-    };
-
-    PagesManager.prototype._slidePrev = function() {
-        znUtils.log(3, {
-            "func": "PagesManager.slidePrev",
-            "arguments": arguments
-        });
-
-        this._options.pagesMoved = -1;
-        this._options.moved++;
-    };
-
-    PagesManager.prototype._slideNext = function() {
-        znUtils.log(3, {
-            "func": "PagesManager.slideNext",
-            "arguments": arguments
-        });
-
-        this._options.pagesMoved = 1;
-        this._options.moved++;
-    };
-
-    PagesManager.prototype.slideLeft = function() {
-        znUtils.log(3, {
-            "func": "PagesManager.slideLeft",
-            "arguments": arguments
-        });
-
-        if (this._options.id.match("^zn-pages-container")) {
-            // If this is a container, then
-            // 1. If column layout, slide left means showing column on right
-            // 2. If row layout, slide left means showing the page on the right of the active row
-            if (this._options.layout === "col") {
-                this._slideNext();
-            } else {
-                var child = this._collections[this._options.children[this._options.activePage]];
-                child._slideNext();
-            }
-        } else if (this._options.id.match("^zn-pages-collection")) {
-            // If this is a collection, then
-            // 1. If column layout, slide left means showing page on right
-            // 2. If row layout, slide left means showing the column on the right of the container
-            if (this._options.layout === "col") {
-                this._slideNext();
-            } else {
-                var parent = this._collections[this._options.parent];
-                parent._slideNext();
-            }
+        // 1. If column layout, slide right means showing column on left
+        // 2. If row layout, slide right means showing the page on the left of the active row
+        if (this.layout === "col") {
+            this.slidePrev();
+        } else {
+            this.collections[this.activeIndex].slidePrev();
         }
     };
 
-    PagesManager.prototype.slideRight = function() {
-        znUtils.log(3, {
-            "func": "PagesManager.slideRight",
-            "arguments": arguments,
-            "options": this._options
-        });
-
-        if (this._options.id.match("^zn-pages-container")) {
-            // If this is a container, then
-            // 1. If column layout, slide right means showing column on left
-            // 2. If row layout, slide right means showing the page on the left of the active row
-            if (this._options.layout === "col") {
-                this._slidePrev();
-            } else {
-                var child = this._collections[this._options.children[this._options.activePage]];
-                child._slidePrev();
-            }
-        } else if (this._options.id.match("^zn-pages-collection")) {
-            // If this is a collection, then
-            // 1. If column layout, slide right means showing page on left
-            // 2. If row layout, slide right means showing the column on the left of the container
-            if (this._options.layout === "col") {
-                this._slidePrev();
-            } else {
-                var parent = this._collections[this._options.parent];
-                parent._slidePrev();
-            }
-        }
-    };
-
-    PagesManager.prototype.slideUp = function() {
-        znUtils.log(3, {
-            "func": "PagesManager.slideUp",
+    Container.prototype.slideUp = function() {
+        Commons.log(3, {
+            "func": "Container.slideUp",
             "arguments": arguments
         });
 
-        if (this._options.id.match("^zn-pages-container")) {
-            // If this is a container, then
-            // 1. If column layout, slide up means showing page below in the active row
-            // 2. If row layout, slide up means showing the row below
-            if (this._options.layout === "col") {
-                var child = this._collections[this._options.children[this._options.activePage]];
-                child._slideNext();
-            } else {
-                this._slideNext();
-            }
-        } else if (this._options.id.match("^zn-pages-collection")) {
-            // If this is a collection, then
-            // 1. If column layout, slide up means showing page below
-            // 2. If row layout, slide up means showing the row below in the parent container
-            if (this._options.layout === "col") {
-                this._slideNext();
-            } else {
-                var parent = this._collections[this._options.parent];
-                parent._slideNext();
-            }
+        // 1. If column layout, slide up means showing page below in the active row
+        // 2. If row layout, slide up means showing the row below
+        if (this.layout === "col") {
+            this.collections[this.activeIndex].slideNext();
+        } else {
+            this.slideNext();
         }
     };
 
-    PagesManager.prototype.slideDown = function() {
-        znUtils.log(3, {
-            "func": "PagesManager.slideDown",
+    Container.prototype.slideDown = function() {
+        Commons.log(3, {
+            "func": "Container.slideDown",
             "arguments": arguments
         });
 
-        if (this._options.id.match("^zn-pages-container")) {
-            // If this is a container, then
-            // 1. If column layout, slide down means showing page above in the active row
-            // 2. If row layout, slide down means showing the row above
-            if (this._options.layout === "col") {
-                var child = this._collections[this._options.children[this._options.activePage]];
-                child._slidePrev();
-            } else {
-                this._slidePrev();
-            }
-        } else if (this._options.id.match("^zn-pages-collection")) {
-            // If this is a collection, then
-            // 1. If column layout, slide down means showing page below
-            // 2. If row layout, slide down means showing the row below in the parent container
-            if (this._options.layout === "col") {
-                this._slidePrev();
-            } else {
-                var parent = this._collections[this._options.parent];
-                parent._slidePrev();
-            }
+        // 1. If column layout, slide down means showing page above in the active row
+        // 2. If row layout, slide down means showing the row above
+        if (this.layout === "col") {
+            this.collections[this.activeIndex].slidePrev();
+        } else {
+            this.slidePrev();
         }
     };
 
     return {
-        newCollection: function(id, collection) {
-            znUtils.log(3, {
-                "func": "znPagesManager.newCollection",
+        newContainer: function () {
+            var c = new Container(containers.length);
+            containers.push(c);
+            return c;
+        },
+
+        containers: function () {
+            return containers;
+        },
+
+        container: function (id) {
+            Commons.log(3, {
+                "func": "znPageManager.container",
                 "arguments": arguments
             });
 
-            if (!_collections[id]) {
-                _collections[id] = new PagesManager(id, collection);
+            for (var i = 0; i < containers.length; i++) {
+                if (containers[i].getId() === id) {
+                    return containers[i];
+                }
+            }
+        }
+    };
+}]);
+
+app.factory("Commons", [ function() {
+    return {
+        log: function () {
+            var debug = true,
+                debug2 = true,
+                debug3 = false,
+                d = arguments[0],
+                i;
+
+            if ((d === 1 && debug) || (d === 2 && debug2) || (d === 3 && debug3)) {
+                console.log(new Date());
+                for (i = 1; i < arguments.length; i++) {
+                    console.log(arguments[i]);
+                }
+            } else if (debug3) {
+                console.log(new Date());
+                for (i = 0; i < arguments.length; i++) {
+                    console.log(arguments[i]);
+                }
+            }
+        },
+
+        attr: function (name, value) {
+           if (angular.isObject(name)) {
+                // if the name is a object map, then loop through the properties and set them individually
+                for (var i in name) {
+                    if (name.hasOwnProperty(i)) this.attr(i, name[i]);
+                }
+            } else if (name !== undefined && value !== undefined) {
+                // if both parameters exist, then we assume we are setting an attribute
+                // For a couple of the properties we do some special treatment
+                // Otherwise we just save the properties
+                this[name] = value;
+            } else if (name !== undefined) {
+                // if name is defined and value is undefined, then we assume we are retrieving
+                // a parameter, so that's what we will do
+                if (((this.getId().match("^zn-pages-collection") && !this.isDynamic()) || this.getId().match("^zn-pages-container")) && name === "activeBufferIndex") {
+                    return this.activeIndex;
+                }
+                return this[name];
             } else {
-                _collections[id].attr("collection", collection);
+                // if all else fails, return undefined
+                return undefined;
+            }
+        },
+
+        slideTo: function(element, obj, animate) {
+            this.log(2, {
+                "func": "Commons.slideTo",
+                "arguments": arguments
+            });
+
+            animate = (arguments.length < 3) ? true : animate;
+
+            var id = obj.getId(),
+                layout = obj.attr("layout"),
+                active = Math.max(0, Math.min(obj.attr("activeBufferIndex")+obj.attr("numMoved"), obj.bufferLength()-1)),
+                width = obj.attr("width"),
+                height = obj.attr("height");
+
+            if (id.match("^zn-pages-container")) {
+                // slide container
+
+                if (layout === "row") {
+                    this.slideY(element, -height * active, animate);
+                } else {
+                    this.slideX(element, -width * active, animate);
+                }
+            } else {
+                // slide collection
+
+                if (!obj.isDynamic()) {
+                    width = obj.attr("pages")[active].attr("width");
+                    height = obj.attr("pages")[active].attr("height");
+                }
+
+                if (layout === "row") {
+                    this.slideX(element, -width * active, animate);
+                } else {
+                    this.slideY(element, -height * active, animate);
+                }
+
+            }
+        },
+
+        slideX: function (element, width, animate) {
+            this.log(2, {
+                "func": "Commons.slideX",
+                "arguments": arguments
+            });
+
+            if (animate === false) {
+                element.removeClass("zn-animate").addClass("zn-noanimate");
+            } else {
+                element.removeClass("zn-noanimate").addClass("zn-animate");
             }
 
-            return _collections[id];
+            element.css(this.whichTransformCSS(), 'translateX(' + width + 'px)');
         },
 
-        collection: function(id) {
-            znUtils.log(3, {
-                "func": "znPagesManager.collection",
+        slideY: function (element, height, animate) {
+            this.log(2, {
+                "func": "Commons.slideY",
                 "arguments": arguments
             });
 
-            return _collections[id];
+            if (animate === false) {
+                element.removeClass("zn-animate").addClass("zn-noanimate");
+            } else {
+                element.removeClass("zn-noanimate").addClass("zn-animate");
+            }
+
+            element.css(this.whichTransformCSS(), 'translateY(' + height + 'px)');
         },
 
-        // angular.element("body").injector().get('znPagesManager').collections();
-        collections: function() {
-            znUtils.log(3, {
-                "func": "znPagesManager.collections",
+        whichTransitionEvent: function () {
+            this.log(3, {
+                "func": "Commons.whichTransitionEvent",
                 "arguments": arguments
             });
 
-            return _collections;
+            var el = document.createElement('fakeelement'),
+                transitions = {
+                    'transition': 'transitionend',
+                    'OTransition': 'oTransitionEnd',
+                    'MozTransition': 'transitionend',
+                    'MSTransition': 'mstransitionend',
+                    'WebkitTransition': 'webkitTransitionEnd'
+                };
+
+            for (var t in transitions) {
+                if (transitions.hasOwnProperty(t)) {
+                    if (el.style[t] !== undefined) {
+                        return transitions[t];
+                    }
+                }
+            }
+        },
+
+        whichTransformCSS: function () {
+            this.log(3, {
+                "func": "Commons.whichTransformCSS",
+                "arguments": arguments
+            });
+
+            var el = document.createElement('fakeelement'),
+                transforms = {
+                    'transform': 'transform',
+                    'oTransform': '-o-transform',
+                    'mozTransform': '-moz-transform',
+                    'webkitTransform': '-webkit-transform',
+                    'msTransform': '-ms-transform'
+                };
+
+            for (var t in transforms) {
+                if (transforms.hasOwnProperty(t)) {
+                    if (el.style[t] !== undefined) {
+                        return transforms[t];
+                    }
+                }
+            }
         }
     }
 }]);
-
-app.value('znUtils', {
-    log: function() {
-        var debug = true,
-            debug2 = true,
-            debug3 = false,
-            d = arguments[0],
-            i;
-
-        if ((d === 1 && debug) || (d === 2 && debug2) || (d === 3 && debug3)) {
-            console.log(new Date());
-            for (i = 1; i < arguments.length; i++) {
-                console.log(arguments[i]);
-            }
-        } else if (debug3) {
-            console.log(new Date());
-            for (i = 0; i < arguments.length; i++) {
-                console.log(arguments[i]);
-            }
-        }
-    },
-
-    slideX: function(element, width, animate) {
-        this.log(3, {
-            "func": "znUtils.slideX",
-            "arguments": arguments
-        });
-
-        if (animate === false) {
-            element.removeClass("zn-animate").addClass("zn-noanimate");
-        } else {
-            element.removeClass("zn-noanimate").addClass("zn-animate");
-        }
-
-        element.css(this.whichTransformCSS(), 'translateX(' + width + 'px)');
-    },
-
-    slideY: function (element, height, animate) {
-        this.log(3, {
-            "func": "znUtils.slideY",
-            "arguments": arguments
-        });
-
-        if (animate === false) {
-            element.removeClass("zn-animate").addClass("zn-noanimate");
-        } else {
-            element.removeClass("zn-noanimate").addClass("zn-animate");
-        }
-
-        element.css(this.whichTransformCSS(), 'translateY(' + height + 'px)');
-    },
-
-    whichTransitionEvent: function() {
-        this.log(3, {
-            "func": "znUtils.whichTransitionEvent",
-            "arguments": arguments
-        });
-
-        var el = document.createElement('fakeelement'),
-            transitions = {
-                'transition': 'transitionend',
-                'OTransition': 'oTransitionEnd',
-                'MozTransition': 'transitionend',
-                'MSTransition': 'mstransitionend',
-                'WebkitTransition': 'webkitTransitionEnd'
-            };
-
-        for (var t in transitions) {
-            if (transitions.hasOwnProperty(t)) {
-                if (el.style[t] !== undefined) {
-                    return transitions[t];
-                }
-            }
-        }
-    },
-
-    whichTransformCSS: function() {
-        this.log(3, {
-            "func": "znUtils.whichTransformCSS",
-            "arguments": arguments
-        });
-
-        var el = document.createElement('fakeelement'),
-            transforms = {
-                'transform': 'transform',
-                'oTransform': '-o-transform',
-                'mozTransform': '-moz-transform',
-                'webkitTransform': '-webkit-transform',
-                'msTransform': '-ms-transform'
-            };
-
-        for (var t in transforms) {
-            if (transforms.hasOwnProperty(t)) {
-                if (el.style[t] !== undefined) {
-                    return transforms[t];
-                }
-            }
-        }
-    }
-});
 
 /**
  * @ngdoc object
@@ -1007,7 +962,7 @@ app.value('znUtils', {
  * documentation for `bind` below.
  */
 
-app.factory('znSwipe', [function() {
+app.factory('znSwipe', [function () {
     // The total distance in any direction before we make the call on swipe vs. scroll.
     var MOVE_BUFFER_RADIUS = 10;
 
@@ -1055,7 +1010,7 @@ app.factory('znSwipe', [function() {
          * as described above.
          *
          */
-        bind: function(element, eventHandlers) {
+        bind: function (element, eventHandlers) {
             // Absolute total movement, used to control swipe vs. scroll.
             var totalX, totalY;
             // Coordinates of the start position.
@@ -1065,7 +1020,7 @@ app.factory('znSwipe', [function() {
             // Whether a swipe is active.
             var active = false;
 
-            element.bind('touchstart mousedown', function(event) {
+            element.bind('touchstart mousedown', function (event) {
                 startCoords = getCoordinates(event);
                 active = true;
                 totalX = 0;
@@ -1074,12 +1029,12 @@ app.factory('znSwipe', [function() {
                 eventHandlers['start'] && eventHandlers['start'](startCoords);
             });
 
-            element.bind('touchcancel', function(event) {
+            element.bind('touchcancel', function (event) {
                 active = false;
                 eventHandlers['cancel'] && eventHandlers['cancel']();
             });
 
-            element.bind('touchmove mousemove', function(event) {
+            element.bind('touchmove mousemove', function (event) {
                 if (!active) return;
 
                 // Android will send a touchcancel if it thinks we're starting to scroll.
@@ -1100,12 +1055,12 @@ app.factory('znSwipe', [function() {
                     return;
                 }
 
-                    // Prevent the browser from scrolling.
+                // Prevent the browser from scrolling.
                 event.preventDefault();
                 eventHandlers['move'] && eventHandlers['move'](coords);
             });
 
-            element.bind('touchend mouseup', function(event) {
+            element.bind('touchend mouseup', function (event) {
                 if (!active) return;
                 active = false;
                 eventHandlers['end'] && eventHandlers['end'](getCoordinates(event));

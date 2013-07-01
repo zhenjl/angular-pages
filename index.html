@@ -4,7 +4,7 @@
     <title>Angular-Pages Pages Demo</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width"/>
-    <link href='src/angular-pages.css' rel='stylesheet' type='text/css'>
+    <link href='../src/angular-pages.css' rel='stylesheet' type='text/css'>
     <style>
         * {
             font-family: arial, sans-serif;
@@ -49,14 +49,15 @@
 </head>
 
 <body ng-app="pagesDemo" ng-controller="pagesDemoController">
-    <a href="https://github.com/zhenjl/angular-pages">
+    <!-- a href="https://github.com/zhenjl/angular-pages">
         <img style="z-index:100;position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_red_aa0000.png" alt="Fork me on GitHub">
-    </a>
+    </a -->
 
     <div style="z-index: 1000; position: absolute; top: 0; left: 0">
         <div class="control">
             <button ng-click="addColor()">add color</button>
             <button ng-click="prependColor()">prepend color</button>
+            <br/>
             <button ng-click="shiftColor()">delete color</button>
             <button ng-click="rotateColor()">rotate color</button>
         </div>
@@ -96,7 +97,7 @@
         </ul>
     </div-->
 
-    <script src="http://code.angularjs.org/1.1.5/angular.min.js"></script>
+    <script src="//code.angularjs.org/1.1.5/angular.min.js"></script>
     <script src="src/angular-pages.js"></script>
 
     <script>
@@ -104,7 +105,7 @@
         //var app = angular.module("pagesDemo", []);
 
         app.controller("pagesDemoController", ['colors', '$scope', '$timeout',
-            'znPagesManager', 'znUtils', function(colors, $scope, $timeout, znPagesManager, znUtils) {
+            'znPageManager', 'Commons', function(colors, $scope, $timeout, znPageManager, Commons) {
             $scope.colors = colors.colors;
 
             $scope.addColor = function() {
@@ -123,23 +124,32 @@
                 colors.prependColor("#27ae60");
             };
 
+            $scope.slidePrev = function() {
+                var a = znPageManager.container("zn-pages-container-0").collection("zn-pages-collection-0-1");
+                a.slidePrev();
+            };
+
+            $scope.slideNext = function() {
+                var a = znPageManager.container("zn-pages-container-0").collection("zn-pages-collection-0-1");
+                a.slideNext();
+            };
+
             $scope.slideLeft = function() {
-                znPagesManager.collection('zn-pages-container-0').slideLeft();
+                znPageManager.container('zn-pages-container-0').slideLeft();
             };
 
             $scope.slideRight = function() {
-                znPagesManager.collection('zn-pages-container-0').slideRight();
+                znPageManager.container('zn-pages-container-0').slideRight();
             };
 
             $scope.slideDown = function() {
-                znPagesManager.collection('zn-pages-container-0').slideDown();
+                znPageManager.container('zn-pages-container-0').slideDown();
             };
 
             $scope.slideUp = function() {
-                znPagesManager.collection('zn-pages-container-0').slideUp();
+                znPageManager.container('zn-pages-container-0').slideUp();
             };
         }]);
-
 
         app.factory('colors', function() {
             var colorsList = ['#9b59b6', '#34495e', '#f1c40f', '#e74c3c'];
