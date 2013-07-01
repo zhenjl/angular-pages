@@ -26,7 +26,6 @@
             top: 200px;
             left: 200px;
             position: absolute;
-            z-index: 10;
         }
 
         .zn-pages-container {
@@ -35,11 +34,42 @@
             top: 0;
             left: 0;
             position: absolute;
-            z-index: 10;
         }
 
         div.control > span, button {
             color: black;
+        }
+
+        div.nav {
+            back-ground: white;
+            opacity: 0.5;
+            width: 90px;
+            height: 90px;
+            bottom: 10px;
+            right: 10px;
+            position: absolute;
+            z-index: 10;
+            padding: 0;
+            margin: 0;
+            -webkit-border-radius: 50px;
+            -moz-border-radius: 50px;
+            border-radius: 50px;
+        }
+
+        div.nav ul {
+            top: 0;
+            left: 0;
+            padding: 0;
+            margin: 0;
+        }
+
+        div.nav li, div.nav img {
+            float: left;
+            font-size: 0;
+            width: 30px;
+            height: 30px;
+            margin: 0;
+            padding: 0;
         }
 
         li {
@@ -53,25 +83,43 @@
         <img style="z-index:100;position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_red_aa0000.png" alt="Fork me on GitHub">
     </a -->
 
-    <div style="z-index: 1000; position: absolute; top: 0; left: 0">
-        <div class="control">
+    <div class="control nav" style="background-color: white; opacity: 0.5; width: 90px;">
+        <ul>
+            <li></li>
+            <li>
+                <img src="img/arrow_up.svg" ng-click="slideDown()" ng-hide="container.isTop()"/>
+            </li>
+            <li></li>
+
+            <li>
+                <img src="img/arrow_left.svg" ng-click="slideRight()" ng-hide="container.isLeft()"/>
+            </li>
+            <li>
+                <img src="img/home.svg" ng-click="slideHome()" />
+            </li>
+            <li>
+                <img src="img/arrow_right.svg" ng-click="slideLeft()" ng-hide="container.isRight()"/>
+            </li>
+
+            <li></li>
+            <li>
+                <img src="img/arrow_down.svg" ng-click="slideUp()" ng-hide="container.isBottom()"/>
+            </li>
+            <li></li>
+        </ul>
+    </div>
+
+    <div style="z-index: 10; position: absolute; top: 0; left: 0">
+        <!--div class="control">
             <button ng-click="addColor()">add color</button>
             <button ng-click="prependColor()">prepend color</button>
             <br/>
             <button ng-click="shiftColor()">delete color</button>
             <button ng-click="rotateColor()">rotate color</button>
-        </div>
-        <div class="control">
-            <button ng-click="slideLeft()">slide left</button>
-            <button ng-click="slideRight()">slide right</button>
-        </div>
-        <div class="control">
-            <button ng-click="slideUp()">slide up</button>
-            <button ng-click="slideDown()">slide down</button>
-        </div>
-    </div>
+        </div-->
+   </div>
 
-    <div zn-pages zn-pages-start="1">
+    <div zn-pages zn-pages-start="1" zn-pages-swipe>
         <ul zn-pages-start="1">
             <li style="background-color: #1abc9c; width: 200px">info page</li>
             <li style="background-color: #3498db">settings page</li>
@@ -108,6 +156,8 @@
         app.controller("pagesDemoController", ['colors', '$scope', '$timeout',
             'znPageManager', 'Commons', function(colors, $scope, $timeout, znPageManager, Commons) {
             $scope.colors = colors.colors;
+            var container = znPageManager.container('zn-pages-container-0');
+            $scope.container = container;
 
             $scope.addColor = function() {
                 colors.addColor("#27ae60");
@@ -125,30 +175,24 @@
                 colors.prependColor("#27ae60");
             };
 
-            $scope.slidePrev = function() {
-                var a = znPageManager.container("zn-pages-container-0").collection("zn-pages-collection-0-1");
-                a.slidePrev();
-            };
-
-            $scope.slideNext = function() {
-                var a = znPageManager.container("zn-pages-container-0").collection("zn-pages-collection-0-1");
-                a.slideNext();
-            };
-
             $scope.slideLeft = function() {
-                znPageManager.container('zn-pages-container-0').slideLeft();
+                container.slideLeft();
             };
 
             $scope.slideRight = function() {
-                znPageManager.container('zn-pages-container-0').slideRight();
+                container.slideRight();
             };
 
             $scope.slideDown = function() {
-                znPageManager.container('zn-pages-container-0').slideDown();
+                container.slideDown();
             };
 
             $scope.slideUp = function() {
-                znPageManager.container('zn-pages-container-0').slideUp();
+                container.slideUp();
+            };
+
+            $scope.slideHome = function() {
+                container.slideHome();
             };
         }]);
 
