@@ -157,7 +157,7 @@ app.directive("znPagesCollection", ['znPageManager', 'Commons', function (znPage
                 Commons.slideTo(element, collection, false);
 
                 scope.$watch("collection.hasMoved()", function(newValue, oldValue) {
-                    Commons.log(2, {
+                    Commons.log(3, {
                         "func": "znPagesCollection.$watch collection.hasMoved()",
                         "arguments": arguments,
                         "collection": collection
@@ -173,11 +173,10 @@ app.directive("znPagesCollection", ['znPageManager', 'Commons', function (znPage
                 // If animation is set to none, then this will not get called
 
                 element[0].addEventListener(Commons.whichTransitionEvent(), function(event) {
-                    Commons.log(2, event, typeof event.target.attributes['zn-id']);
 
                     if (event.target.getAttribute('zn-id').match(/^zn-pages-collection/)) {
                         scope.$apply(function() {
-                            Commons.log(2, {
+                            Commons.log(3, {
                                 "func": "znPagesCollection.link.addEventListener transitionEnd",
                                 "arguments": arguments
                             });
@@ -267,7 +266,7 @@ app.directive("znPages", ["znSwipe", 'znPageManager', 'Commons', function (znSwi
                 Commons.slideTo(containerElem, container, false);
 
                 scope.$watch("container.hasMoved()", function(newValue, oldValue) {
-                    Commons.log(2, {
+                    Commons.log(3, {
                         "func": "znPages.$watch container.hasMoved()",
                         "arguments": arguments
                     });
@@ -311,9 +310,8 @@ app.directive("znPages", ["znSwipe", 'znPageManager', 'Commons', function (znSwi
                                 e = angular.element(childrenElem[container.attr("activeIndex")]);
                             }
 
-                            active = cm.attr("activeBufferIndex");
                             ratio = ((cm.isHead() && offset > 0) || (cm.isTail() && offset < 0)) ? 3 : 1;
-                            newX = -cm.attr("width") * active + Math.round(offset / ratio);
+                            newX = cm.activePosition().width + Math.round(offset / ratio);
 
                             Commons.slideX(e, newX, false);
                         } else {
@@ -329,7 +327,7 @@ app.directive("znPages", ["znSwipe", 'znPageManager', 'Commons', function (znSwi
 
                             active = cm.attr("activeBufferIndex");
                             ratio = ((cm.isHead() && offset > 0) || (cm.isTail() && offset < 0)) ? 3 : 1;
-                            newY = -cm.attr("height") * active + Math.round(offset / ratio);
+                            newY = cm.activePosition().height + Math.round(offset / ratio);
 
                             Commons.slideY(e, newY, false);
                         }
@@ -406,7 +404,7 @@ app.service("znPageManager", ['Commons', function (Commons) {
             id: id,                             // The page ID
             width: 0,                           // Page width
             height: 0,                          // Page height
-            parent: null,                       // The collection holding this page
+            parent: null                        // The collection holding this page
         };
 
         angular.extend(this, _options);
@@ -484,6 +482,24 @@ app.service("znPageManager", ['Commons', function (Commons) {
         return this.isDynamic() ? this.collection.length : this.pages.length;
     };
 
+    Collection.prototype.activePosition = function() {
+        var active = Math.max(0, Math.min(this.attr("activeBufferIndex")+this.numMoved, this.bufferLength()-1));
+        var position = { width: 0, height: 0 };
+
+        if (this.isDynamic()) {
+            position.width = -this.width * active;
+            position.height = -this.height * active;
+        } else {
+            for (var i = 0; i < active; i++) {
+                position.width -= this.pages[i].attr("width");
+                position.height -= this.pages[i].attr("height");
+            }
+
+        }
+
+        return position;
+    };
+
     Collection.prototype.hasMoved = function() {
         return this.moved;
     };
@@ -546,7 +562,6 @@ app.service("znPageManager", ['Commons', function (Commons) {
             // it up using the start page.
 
             active = this.startPage;
-            Commons.log(2, "=== 0 ----> " + active);
         } else if (collectionKeys[this.activeIndex] !== bufferKeys[this.activeBufferIndex]) {
             // If the actual key in the collection pointed to by the page index in the collection
             // is no longer the same as the saved key, then we know the array has shifted and positions
@@ -560,14 +575,12 @@ app.service("znPageManager", ['Commons', function (Commons) {
             }
 
             if (active === undefined) active = this.startPage;
-            Commons.log(2, "keys !== ----> " + active);
         } else {
             // By now, we know the buffer has been set before, and that the saved key is the same
             // as the collection key that's pointed to by the page index, then we just keep
             // the same active key and just update the buffer around it
 
             active = this.activeIndex;
-            Commons.log(2, "or else ----> " + active);
         }
 
         // active should be previous_active + change
@@ -577,14 +590,6 @@ app.service("znPageManager", ['Commons', function (Commons) {
         bufferEnd = bufferStart + this.bufferSize;
         bufferKeys = collectionKeys.slice(bufferStart, bufferEnd);
 
-        Commons.log(2, {
-            loc: "znPagesCollection.updateBuffer",
-            active: active,
-            bufferStart: bufferStart,
-            activeBufferIndex: activeBufferIndex,
-            bufferEnd: bufferEnd,
-            numMoved: this.numMoved
-        })
         // Create the display buffer, return either array or object map depending on the
         // original collection
 
@@ -603,10 +608,6 @@ app.service("znPageManager", ['Commons', function (Commons) {
         this.activeIndex = active;
         this.numMoved = 0;
 
-        Commons.log(2, {
-            loc: "znPagesCollection.updateBuffer -----",
-            numMoved: this.numMoved
-        })
         return this.buffer;
     };
 
@@ -668,11 +669,23 @@ app.service("znPageManager", ['Commons', function (Commons) {
 
     Container.prototype.bufferLength = function() {
         return this.length();
-    }
+    };
 
     Container.prototype.hasMoved = function() {
         return this.moved;
-    }
+    };
+
+    Container.prototype.activePosition = function() {
+        var active = Math.max(0, Math.min(this.activeIndex + this.numMoved, this.length()-1));
+        var position = { width: 0, height: 0 };
+
+        for (var i = 0; i < active; i++) {
+            position.width -= this.collections[i].attr("width");
+            position.height -= this.collections[i].attr("height");
+        }
+
+        return position;
+    };
 
     Container.prototype.slideReset = function() {
         this.moved++;
@@ -816,7 +829,7 @@ app.factory("Commons", [ function() {
             } else if (name !== undefined) {
                 // if name is defined and value is undefined, then we assume we are retrieving
                 // a parameter, so that's what we will do
-                if (((this.getId().match("^zn-pages-collection") && !this.isDynamic()) || this.getId().match("^zn-pages-container")) && name === "activeBufferIndex") {
+                if (((this.getId().match(/^zn-pages-collection/) && !this.isDynamic()) || this.getId().match(/^zn-pages-container/)) && name === "activeBufferIndex") {
                     return this.activeIndex;
                 }
                 return this[name];
@@ -827,7 +840,7 @@ app.factory("Commons", [ function() {
         },
 
         slideTo: function(element, obj, animate) {
-            this.log(2, {
+            this.log(3, {
                 "func": "Commons.slideTo",
                 "arguments": arguments
             });
@@ -836,37 +849,29 @@ app.factory("Commons", [ function() {
 
             var id = obj.getId(),
                 layout = obj.attr("layout"),
-                active = Math.max(0, Math.min(obj.attr("activeBufferIndex")+obj.attr("numMoved"), obj.bufferLength()-1)),
-                width = obj.attr("width"),
-                height = obj.attr("height");
+                position = obj.activePosition();
 
-            if (id.match("^zn-pages-container")) {
+            if (id.match(/^zn-pages-container/)) {
                 // slide container
 
                 if (layout === "row") {
-                    this.slideY(element, -height * active, animate);
+                    this.slideY(element, position.height, animate);
                 } else {
-                    this.slideX(element, -width * active, animate);
+                    this.slideX(element, position.width, animate);
                 }
             } else {
                 // slide collection
-
-                if (!obj.isDynamic()) {
-                    width = obj.attr("pages")[active].attr("width");
-                    height = obj.attr("pages")[active].attr("height");
-                }
-
                 if (layout === "row") {
-                    this.slideX(element, -width * active, animate);
+                    this.slideX(element, position.width, animate);
                 } else {
-                    this.slideY(element, -height * active, animate);
+                    this.slideY(element, position.height, animate);
                 }
 
             }
         },
 
         slideX: function (element, width, animate) {
-            this.log(2, {
+            this.log(3, {
                 "func": "Commons.slideX",
                 "arguments": arguments
             });
@@ -881,7 +886,7 @@ app.factory("Commons", [ function() {
         },
 
         slideY: function (element, height, animate) {
-            this.log(2, {
+            this.log(3, {
                 "func": "Commons.slideY",
                 "arguments": arguments
             });
