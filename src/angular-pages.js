@@ -157,7 +157,7 @@ app.directive("znPagesCollection", ['znPageManager', 'Commons', function (znPage
                 Commons.slideTo(element, collection, false);
 
                 scope.$watch("collection.hasMoved()", function(newValue, oldValue) {
-                    Commons.log(2, {
+                    Commons.log(3, {
                         "func": "znPagesCollection.$watch collection.hasMoved()",
                         "arguments": arguments,
                         "collection": collection
@@ -173,11 +173,10 @@ app.directive("znPagesCollection", ['znPageManager', 'Commons', function (znPage
                 // If animation is set to none, then this will not get called
 
                 element[0].addEventListener(Commons.whichTransitionEvent(), function(event) {
-                    Commons.log(2, event, typeof event.target.attributes['zn-id']);
 
                     if (event.target.getAttribute('zn-id').match(/^zn-pages-collection/)) {
                         scope.$apply(function() {
-                            Commons.log(2, {
+                            Commons.log(3, {
                                 "func": "znPagesCollection.link.addEventListener transitionEnd",
                                 "arguments": arguments
                             });
@@ -267,7 +266,7 @@ app.directive("znPages", ["znSwipe", 'znPageManager', 'Commons', function (znSwi
                 Commons.slideTo(containerElem, container, false);
 
                 scope.$watch("container.hasMoved()", function(newValue, oldValue) {
-                    Commons.log(2, {
+                    Commons.log(3, {
                         "func": "znPages.$watch container.hasMoved()",
                         "arguments": arguments
                     });
@@ -546,7 +545,6 @@ app.service("znPageManager", ['Commons', function (Commons) {
             // it up using the start page.
 
             active = this.startPage;
-            Commons.log(2, "=== 0 ----> " + active);
         } else if (collectionKeys[this.activeIndex] !== bufferKeys[this.activeBufferIndex]) {
             // If the actual key in the collection pointed to by the page index in the collection
             // is no longer the same as the saved key, then we know the array has shifted and positions
@@ -560,14 +558,12 @@ app.service("znPageManager", ['Commons', function (Commons) {
             }
 
             if (active === undefined) active = this.startPage;
-            Commons.log(2, "keys !== ----> " + active);
         } else {
             // By now, we know the buffer has been set before, and that the saved key is the same
             // as the collection key that's pointed to by the page index, then we just keep
             // the same active key and just update the buffer around it
 
             active = this.activeIndex;
-            Commons.log(2, "or else ----> " + active);
         }
 
         // active should be previous_active + change
@@ -577,14 +573,6 @@ app.service("znPageManager", ['Commons', function (Commons) {
         bufferEnd = bufferStart + this.bufferSize;
         bufferKeys = collectionKeys.slice(bufferStart, bufferEnd);
 
-        Commons.log(2, {
-            loc: "znPagesCollection.updateBuffer",
-            active: active,
-            bufferStart: bufferStart,
-            activeBufferIndex: activeBufferIndex,
-            bufferEnd: bufferEnd,
-            numMoved: this.numMoved
-        })
         // Create the display buffer, return either array or object map depending on the
         // original collection
 
@@ -603,10 +591,6 @@ app.service("znPageManager", ['Commons', function (Commons) {
         this.activeIndex = active;
         this.numMoved = 0;
 
-        Commons.log(2, {
-            loc: "znPagesCollection.updateBuffer -----",
-            numMoved: this.numMoved
-        })
         return this.buffer;
     };
 
@@ -827,7 +811,7 @@ app.factory("Commons", [ function() {
         },
 
         slideTo: function(element, obj, animate) {
-            this.log(2, {
+            this.log(3, {
                 "func": "Commons.slideTo",
                 "arguments": arguments
             });
@@ -866,7 +850,7 @@ app.factory("Commons", [ function() {
         },
 
         slideX: function (element, width, animate) {
-            this.log(2, {
+            this.log(3, {
                 "func": "Commons.slideX",
                 "arguments": arguments
             });
@@ -881,7 +865,7 @@ app.factory("Commons", [ function() {
         },
 
         slideY: function (element, height, animate) {
-            this.log(2, {
+            this.log(3, {
                 "func": "Commons.slideY",
                 "arguments": arguments
             });
