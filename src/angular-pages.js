@@ -159,13 +159,18 @@ app.directive("znPagesCollection", ['znPageManager', 'Commons', function (znPage
                 scope.$watch("collection.hasMoved()", function(newValue, oldValue) {
                     Commons.log(3, {
                         "func": "znPagesCollection.$watch collection.hasMoved()",
-                        "arguments": arguments,
-                        "collection": collection
+                        "arguments": arguments
                     });
 
                     if (newValue != undefined && newValue !== oldValue) {
-                        Commons.slideTo(element, collection, true);
-                        collection.updateBuffer();
+                        if (collection.attr("reset")) {
+                            scope.znPagesBuffer = collection.updateBuffer();
+                            Commons.slideTo(element, collection, true);
+                            collection.attr("reset", false);
+                        } else {
+                            Commons.slideTo(element, collection, true);
+                            collection.updateBuffer();
+                        }
                     }
                 });
 
@@ -251,16 +256,18 @@ app.directive("znPages", ["znSwipe", 'znPageManager', 'Commons', function (znSwi
 
                 scope.container = container;
 
-                var start = attrs['znPagesStart'] ? Math.max(0, parseInt(attrs['znPagesStart'])) : 0,
+                var start = typeof attrs['znPagesStart'] !== 'undefined' ? Math.max(0, parseInt(attrs['znPagesStart'])) : 0,
                     containerElem = angular.element(element.children()[0]), // the newly added div container
-                    childrenElem = containerElem.children();
+                    childrenElem = containerElem.children(),
+                    swipe = typeof attrs['znPagesSwipe'] !== 'undefined' ? true : false;
 
                 container.attr({
                     "width": containerElem[0].getBoundingClientRect().width,
                     "height": containerElem[0].getBoundingClientRect().height,
                     "layout": layout,
                     "start": start,
-                    "activeIndex": start
+                    "activeIndex": start,
+                    "swipe": swipe
                 });
 
                 Commons.slideTo(containerElem, container, false);
@@ -277,112 +284,114 @@ app.directive("znPages", ["znSwipe", 'znPageManager', 'Commons', function (znSwi
                     }
                 });
 
-                var startPos,            // coordinates of the last position
-                    moveX;               // moving horizontally (X) or vertically (!X)
+                if (swipe) {
+                    var startPos,            // coordinates of the last position
+                        moveX;               // moving horizontally (X) or vertically (!X)
 
-                znSwipe.bind(containerElem, {
-                    start: function(coords) {
-                        startPos = coords;
-                        moveX = undefined;
-                    },
+                    znSwipe.bind(containerElem, {
+                        start: function (coords) {
+                            startPos = coords;
+                            moveX = undefined;
+                        },
 
-                    move: function(coords) {
-                        if (!startPos) return;
+                        move: function (coords) {
+                            if (!startPos) return;
 
-                        var pageManager = scope.pageManager;
+                            var pageManager = scope.pageManager;
 
-                        if (moveX === undefined) {
-                            var totalX = Math.abs(coords.x - startPos.x),
-                                totalY = Math.abs(coords.y - startPos.y);
-                            moveX = (totalX > totalY);
-                        }
-
-                        var e, active, cm, childId, offset, ratio, newX, newY;
-
-                        if (moveX) {
-                            offset = coords.x - startPos.x;
-
-                            if (layout === "col") {
-                                e = containerElem;
-                                cm = container;
-                            } else {
-                                cm = container.attr("collections")[container.attr("activeIndex")];
-                                e = angular.element(childrenElem[container.attr("activeIndex")]);
+                            if (moveX === undefined) {
+                                var totalX = Math.abs(coords.x - startPos.x),
+                                    totalY = Math.abs(coords.y - startPos.y);
+                                moveX = (totalX > totalY);
                             }
 
-                            ratio = ((cm.isHead() && offset > 0) || (cm.isTail() && offset < 0)) ? 3 : 1;
-                            newX = cm.getPosition(cm.attr("activeBufferIndex")).width + Math.round(offset / ratio);
-
-                            Commons.slideX(e, newX, false);
-                        } else {
-                            offset = coords.y - startPos.y;
-
-                            if (layout === "col") {
-                                cm = container.attr("collections")[container.attr("activeIndex")];
-                                e = angular.element(childrenElem[container.attr("activeIndex")]);
-                            } else {
-                                e = containerElem;
-                                cm = container;
-                            }
-
-                            active = cm.attr("activeBufferIndex");
-                            ratio = ((cm.isHead() && offset > 0) || (cm.isTail() && offset < 0)) ? 3 : 1;
-                            newY = cm.getPosition(cm.attr("activeBufferIndex")).height + Math.round(offset / ratio);
-
-                            Commons.slideY(e, newY, false);
-                        }
-                    },
-
-                    end: function(coords) {
-                        if (!startPos || moveX == undefined) return;
-
-                        scope.$apply(function() {
-                            var cm = null,
-                                childId = null,
-                                delta = 0,
-                                move = false,
-                                container = scope.container;
+                            var e, active, cm, childId, offset, ratio, newX, newY;
 
                             if (moveX) {
+                                offset = coords.x - startPos.x;
+
                                 if (layout === "col") {
+                                    e = containerElem;
                                     cm = container;
                                 } else {
                                     cm = container.attr("collections")[container.attr("activeIndex")];
+                                    e = angular.element(childrenElem[container.attr("activeIndex")]);
                                 }
 
-                                delta = coords.x - startPos.x;
-                                move = Math.abs(delta) >= cm.attr("width") * 0.1;
+                                ratio = ((cm.isHead() && offset > 0) || (cm.isTail() && offset < 0)) ? 3 : 1;
+                                newX = cm.getPosition(cm.attr("activeBufferIndex")).width + Math.round(offset / ratio);
 
-                                if ((cm.isHead() && delta > 0) || (cm.isTail() && delta < 0) || !move) {
-                                    cm.slideReset();
-                                } else {
-                                    delta > 0 ? container.slideRight() : container.slideLeft();
-                                }
+                                Commons.slideX(e, newX, false);
                             } else {
+                                offset = coords.y - startPos.y;
+
                                 if (layout === "col") {
                                     cm = container.attr("collections")[container.attr("activeIndex")];
+                                    e = angular.element(childrenElem[container.attr("activeIndex")]);
                                 } else {
+                                    e = containerElem;
                                     cm = container;
                                 }
 
-                                delta = coords.y - startPos.y;
-                                move = Math.abs(delta) >= cm.attr("height") * 0.1;
+                                active = cm.attr("activeBufferIndex");
+                                ratio = ((cm.isHead() && offset > 0) || (cm.isTail() && offset < 0)) ? 3 : 1;
+                                newY = cm.getPosition(cm.attr("activeBufferIndex")).height + Math.round(offset / ratio);
 
-                                if ((cm.isHead() && delta > 0) || (cm.isTail() && delta < 0) || !move) {
-                                    cm.slideReset();
-                                } else {
-                                    delta < 0 ? container.slideUp() : container.slideDown();
-                                }
+                                Commons.slideY(e, newY, false);
                             }
-                        });
+                        },
 
-                        startPos = null;
-                    },
+                        end: function (coords) {
+                            if (!startPos || moveX == undefined) return;
 
-                    cancel: function() {
-                        // TODO: what are we going to do?
-                    }
-                })
+                            scope.$apply(function () {
+                                var cm = null,
+                                    childId = null,
+                                    delta = 0,
+                                    move = false,
+                                    container = scope.container;
+
+                                if (moveX) {
+                                    if (layout === "col") {
+                                        cm = container;
+                                    } else {
+                                        cm = container.attr("collections")[container.attr("activeIndex")];
+                                    }
+
+                                    delta = coords.x - startPos.x;
+                                    move = Math.abs(delta) >= cm.attr("width") * 0.1;
+
+                                    if ((cm.isHead() && delta > 0) || (cm.isTail() && delta < 0) || !move) {
+                                        cm.slideReset();
+                                    } else {
+                                        delta > 0 ? container.slideRight() : container.slideLeft();
+                                    }
+                                } else {
+                                    if (layout === "col") {
+                                        cm = container.attr("collections")[container.attr("activeIndex")];
+                                    } else {
+                                        cm = container;
+                                    }
+
+                                    delta = coords.y - startPos.y;
+                                    move = Math.abs(delta) >= cm.attr("height") * 0.1;
+
+                                    if ((cm.isHead() && delta > 0) || (cm.isTail() && delta < 0) || !move) {
+                                        cm.slideReset();
+                                    } else {
+                                        delta < 0 ? container.slideUp() : container.slideDown();
+                                    }
+                                }
+                            });
+
+                            startPos = null;
+                        },
+
+                        cancel: function () {
+                            // TODO: what are we going to do?
+                        }
+                    })
+                }
             }
         }
     }
@@ -439,7 +448,8 @@ app.service("znPageManager", ['Commons', function (Commons) {
             moved: 0,                        // The collection has moved
             height: 0,
             width: 0,
-            layout: "row"
+            layout: "row",
+            reset: false
         };
 
         for (var i in _options) this[i] = _options[i];
@@ -482,24 +492,6 @@ app.service("znPageManager", ['Commons', function (Commons) {
         return this.isDynamic() ? this.collection.length : this.pages.length;
     };
 
-    Collection.prototype.activePosition = function() {
-        var active = this.attr("activeBufferIndex");
-        var position = { width: 0, height: 0 };
-
-        if (this.isDynamic()) {
-            position.width = -this.width * active;
-            position.height = -this.height * active;
-        } else {
-            for (var i = 0; i < active; i++) {
-                position.width -= this.pages[i].attr("width");
-                position.height -= this.pages[i].attr("height");
-            }
-
-        }
-
-        return position;
-    };
-
     Collection.prototype.getPosition = function(index) {
         var position = { width: 0, height: 0 };
 
@@ -532,6 +524,13 @@ app.service("znPageManager", ['Commons', function (Commons) {
 
     Collection.prototype.slideNext = function() {
         this.numMoved = 1;
+        this.moved++;
+    };
+
+    Collection.prototype.slideHome = function() {
+        this.numMoved = 0;
+        this.buffer = [];
+        this.reset = true;
         this.moved++;
     };
 
@@ -646,7 +645,8 @@ app.service("znPageManager", ['Commons', function (Commons) {
             moved: 0,                        // The collection has moved
             height: 0,
             width: 0,
-            layout: "row"
+            layout: "row",
+            swipe: true
         };
 
         angular.extend(this, _options);
@@ -672,6 +672,38 @@ app.service("znPageManager", ['Commons', function (Commons) {
         return this.activeIndex === this.length()-1;
     };
 
+    Container.prototype.isLeft = function () {
+        if (this.layout === "row") {
+            return this.collections[this.activeIndex].isHead();
+        } else {
+            return this.isHead();
+        }
+    };
+
+    Container.prototype.isRight = function () {
+        if (this.layout === "row") {
+            return this.collections[this.activeIndex].isTail();
+        } else {
+            return this.isTail();
+        }
+    };
+
+    Container.prototype.isTop = function () {
+        if (this.layout === "row") {
+            return this.isHead();
+        } else {
+            return this.collections[this.activeIndex].isHead();
+        }
+    };
+
+    Container.prototype.isBottom = function () {
+        if (this.layout === "row") {
+            return this.isTail();
+        } else {
+            return this.collections[this.activeIndex].isTail();
+        }
+    };
+
     Container.prototype.length = function () {
         return this.collections.length;
     };
@@ -692,18 +724,6 @@ app.service("znPageManager", ['Commons', function (Commons) {
         return this.moved;
     };
 
-    Container.prototype.activePosition = function() {
-        var active = this.attr("activeBufferPage");
-        var position = { width: 0, height: 0 };
-
-        for (var i = 0; i < active; i++) {
-            position.width -= this.collections[i].attr("width");
-            position.height -= this.collections[i].attr("height");
-        }
-
-        return position;
-    };
-
     Container.prototype.getPosition = function(index) {
         var position = { width: 0, height: 0 };
 
@@ -716,6 +736,18 @@ app.service("znPageManager", ['Commons', function (Commons) {
     };
 
     Container.prototype.slideReset = function() {
+        this.moved++;
+    };
+
+    Container.prototype.slideHome = function() {
+        this.numMoved = 0;
+        this.activeIndex = this.start;
+        this.activeBufferIndex = this.start;
+
+        for (var i = 0; i < this.length()-1; i++) {
+            this.collections[i].slideHome();
+        }
+
         this.moved++;
     };
 
