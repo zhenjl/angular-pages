@@ -278,7 +278,7 @@ app.directive("znPages", ["znSwipe", 'znPageManager', 'Commons', function (znSwi
                 });
 
                 var startPos,            // coordinates of the last position
-                    moveX;              // moving horizontally (X) or vertically (!X)
+                    moveX;               // moving horizontally (X) or vertically (!X)
 
                 znSwipe.bind(containerElem, {
                     start: function(coords) {
@@ -311,7 +311,7 @@ app.directive("znPages", ["znSwipe", 'znPageManager', 'Commons', function (znSwi
                             }
 
                             ratio = ((cm.isHead() && offset > 0) || (cm.isTail() && offset < 0)) ? 3 : 1;
-                            newX = cm.activePosition().width + Math.round(offset / ratio);
+                            newX = cm.getPosition(cm.attr("activeBufferIndex")).width + Math.round(offset / ratio);
 
                             Commons.slideX(e, newX, false);
                         } else {
@@ -327,7 +327,7 @@ app.directive("znPages", ["znSwipe", 'znPageManager', 'Commons', function (znSwi
 
                             active = cm.attr("activeBufferIndex");
                             ratio = ((cm.isHead() && offset > 0) || (cm.isTail() && offset < 0)) ? 3 : 1;
-                            newY = cm.activePosition().height + Math.round(offset / ratio);
+                            newY = cm.getPosition(cm.attr("activeBufferIndex")).height + Math.round(offset / ratio);
 
                             Commons.slideY(e, newY, false);
                         }
@@ -483,7 +483,7 @@ app.service("znPageManager", ['Commons', function (Commons) {
     };
 
     Collection.prototype.activePosition = function() {
-        var active = Math.max(0, Math.min(this.attr("activeBufferIndex")+this.numMoved, this.bufferLength()-1));
+        var active = this.attr("activeBufferIndex");
         var position = { width: 0, height: 0 };
 
         if (this.isDynamic()) {
@@ -491,6 +491,23 @@ app.service("znPageManager", ['Commons', function (Commons) {
             position.height = -this.height * active;
         } else {
             for (var i = 0; i < active; i++) {
+                position.width -= this.pages[i].attr("width");
+                position.height -= this.pages[i].attr("height");
+            }
+
+        }
+
+        return position;
+    };
+
+    Collection.prototype.getPosition = function(index) {
+        var position = { width: 0, height: 0 };
+
+        if (this.isDynamic()) {
+            position.width = -this.width * index;
+            position.height = -this.height * index;
+        } else {
+            for (var i = 0; i < index; i++) {
                 position.width -= this.pages[i].attr("width");
                 position.height -= this.pages[i].attr("height");
             }
@@ -676,10 +693,21 @@ app.service("znPageManager", ['Commons', function (Commons) {
     };
 
     Container.prototype.activePosition = function() {
-        var active = Math.max(0, Math.min(this.activeIndex + this.numMoved, this.length()-1));
+        var active = this.attr("activeBufferPage");
         var position = { width: 0, height: 0 };
 
         for (var i = 0; i < active; i++) {
+            position.width -= this.collections[i].attr("width");
+            position.height -= this.collections[i].attr("height");
+        }
+
+        return position;
+    };
+
+    Container.prototype.getPosition = function(index) {
+        var position = { width: 0, height: 0 };
+
+        for (var i = 0; i < index; i++) {
             position.width -= this.collections[i].attr("width");
             position.height -= this.collections[i].attr("height");
         }
@@ -849,7 +877,8 @@ app.factory("Commons", [ function() {
 
             var id = obj.getId(),
                 layout = obj.attr("layout"),
-                position = obj.activePosition();
+                active = Math.max(0, Math.min(obj.attr("activeBufferIndex")+obj.attr("numMoved"), obj.bufferLength()-1)),
+                position = obj.getPosition(active);
 
             if (id.match(/^zn-pages-container/)) {
                 // slide container
