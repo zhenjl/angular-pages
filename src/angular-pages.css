@@ -46,7 +46,7 @@
     font-size: 0;
 }
 
-.zn-pages-row li, .zn-pages-col li {
+.zn-pages-row > ul > li, .zn-pages-col > ul > li {
     list-style-type: none;
     height: 100%;
     width: 100%;
@@ -54,7 +54,7 @@
     vertical-align: top;
 }
 
-.zn-pages-row ul, .zn-pages-col ul {
+.zn-pages-row > ul, .zn-pages-col > ul {
     overflow: visible;
     margin: 0;
     padding: 0;
@@ -64,11 +64,11 @@
     font-size: 0;
 }
 
-.zn-pages-row ul {
+.zn-pages-row > ul {
     display: block;
     white-space: nowrap;
 }
 
-.zn-pages-row li {
+.zn-pages-row > ul > li {
     display: inline-block;
 }

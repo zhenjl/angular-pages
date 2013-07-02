@@ -7,9 +7,9 @@
     <link href='src/angular-pages.css' rel='stylesheet' type='text/css'>
     <style>
         * {
-            font-family: arial, sans-serif;
-            font-size: 14px;
-            color: white;
+            font-family: calibri, sans-serif;
+            font-size: 20px;
+            font-weight: normal;
         }
 
         html, body {
@@ -18,6 +18,18 @@
             box-sizing: border-box;
             height: 100%;
             width: 100%;
+            font-family: calibri, sans-serif;
+            font-size: 20px;
+        }
+
+        h1 {
+            font-size: 36px;
+            font-weight: normal;
+        }
+
+        h2 {
+            font-size: 28px;
+            font-weight: normal;
         }
 
         .zn-pages-container2 {
@@ -34,10 +46,7 @@
             top: 0;
             left: 0;
             position: absolute;
-        }
-
-        div.control > span, button {
-            color: black;
+            color: white;
         }
 
         div.nav {
@@ -56,14 +65,14 @@
             border-radius: 50px;
         }
 
-        div.nav ul {
+        div.nav > ul {
             top: 0;
             left: 0;
             padding: 0;
             margin: 0;
         }
 
-        div.nav li, div.nav img {
+        div.nav > ul > li, div.nav > ul > li > img {
             float: left;
             font-size: 0;
             width: 30px;
@@ -72,13 +81,24 @@
             padding: 0;
         }
 
-        li {
-            text-align: center;
+        div.toc {
+            margin: 0 auto;
+            padding: 0;
+            width: 90%;
+            line-height: 150%;
+        }
+
+        div.toc ul {
+            list-style: disc outside;
+        }
+
+        a {
+            color: white;
         }
     </style>
 </head>
 
-<body ng-app="pagesDemo" ng-controller="pagesDemoController">
+<body ng-app="pagesDemo" ng-controller="pagesDemoController" ng-cloak>
     <a href="https://github.com/zhenjl/angular-pages">
         <img style="z-index:100;position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_red_aa0000.png" alt="Fork me on GitHub">
     </a>
@@ -90,7 +110,6 @@
                 <img src="img/arrow_up.svg" ng-click="slideDown()" ng-hide="container.isTop()"/>
             </li>
             <li></li>
-
             <li>
                 <img src="img/arrow_left.svg" ng-click="slideRight()" ng-hide="container.isLeft()"/>
             </li>
@@ -100,7 +119,6 @@
             <li>
                 <img src="img/arrow_right.svg" ng-click="slideLeft()" ng-hide="container.isRight()"/>
             </li>
-
             <li></li>
             <li>
                 <img src="img/arrow_down.svg" ng-click="slideUp()" ng-hide="container.isBottom()"/>
@@ -109,41 +127,202 @@
         </ul>
     </div>
 
-    <div style="z-index: 10; position: absolute; top: 0; left: 0">
-        <!--div class="control">
-            <button ng-click="addColor()">add color</button>
-            <button ng-click="prependColor()">prepend color</button>
-            <br/>
-            <button ng-click="shiftColor()">delete color</button>
-            <button ng-click="rotateColor()">rotate color</button>
-        </div-->
-   </div>
+    <div zn-pages zn-pages-start="0" zn-pages-swipe>
+        <ul zn-pages-start="1">
+            <li style="background-color: #d35400; width: 250px">
+                <div class="toc">
+                    <h1>Pages</h1>
+                    <ul>
+                        <li>Top Row
+                            <ul>
+                                <li>Pages</li>
+                                <li>Main</li>
+                                <li>Example</li>
+                                <li>Concepts</li>
+                                <li>Attributes</li>
+                            </ul>
+                        </li>
+                        <li>Middle Row
+                            <ul>
+                                <li ng-repeat="val in colors track by $id($index)">{{  val }}</li>
+                            </ul>
+                        </li>
+                        <li>Bottom Row
+                            <ul>
+                                <li>Credits</li>
+                                <li>License</li>
+                            </ul>
+                        </li>
+                    </ul>
 
-    <div zn-pages zn-pages-start="1" zn-pages-swipe>
+                    <p style="font-size: 18px">
+                        This sidebar is 250px wide. It can be used for options, etc. The above list shows the
+                        organization of this demo. Basically the demo has 3 rows of different pages.
+                    </p>
+                </div>
+            </li>
+            <li style="background-color: #3498db">
+                <div style="width: 50%; margin: 0 auto; line-height: 150%;">
+                    <h1 style="text-align: center">Angular Pages</h1>
+                    <p>
+                        Angular-pages is a angular.js directive that lays out pages in rows and columns, and then
+                        allow users to transition between the pages, either by swiping or paging.
+                    </p>
+                    <p>
+                        Let me start by thanking <a href="http://twitter.com/revolunet">@revolunet</a> for his
+                        awesome <a href="https://github.com/revolunet/angular-carousel">angular-carousel directive</a>.
+                        @revolunet has done an amazing job with it and if you are looking for a carousel tool,
+                        definitely check it out. Angular-pages is heavily inspired by and borrowed from
+                        angular-carousel.
+                    </p>
+                    <p>
+                        The navigation in the bottom right corner will show you which direction has more pages.
+                        You can click on the arrow to go there, swipe towards the opposition direction on your
+                        mobile device, or click-n-drag on your desktop browser.
+                    </p>
+                </div>
+            </li>
+            <li style="background-color: #9b59b6; font-size: 14px; color: white; ">
+                <div style="width: 70%; margin: 0 auto; line-height: 150%;">
+                    <h1 style="text-align: center">An Example</h1>
+                    <script src="https://gist.github.com/zhenjl/5906950.js"></script>
+                </div>
+            </li>
+            <li style="background-color: #27ae60">
+                <div style="width: 50%; margin: 0 auto; line-height: 150%;">
+                    <h1 style="text-align: center">Containers, Collections, Pages</h1>
+                    <p>
+                        Angular-pages is fairly simple to setup. There are three layers to consider: container,
+                        collection and page. Container is the top level DIV element that contains multiple
+                        collections. A collection is a UL element containing multiple LI elements. Each LI element
+                        is a page.
+                    </p>
+                    <p>
+                        There can be multiple containers in a single HTML document. Each container can have
+                        multiple collections. And each collection can have multiple pages.
+                    </p>
+                    <p>
+                        Collections can contain a list of static pages (see top row of this demo), or it can
+                        be dynamic (see middle row). A dynamic collection means each page in the collection
+                        is generated by an ng-repeat directive.
+                    </p>
+                    <p>
+                        Collections can also be laid out in row or column format. By default, if not specified, the
+                        format is row. If "col" is specified, then column format is used.
+                    </p>
+                </div>
+            </li>
+            <li style="background-color: #f39c12">
+                <div style="width: 50%; margin: 0 auto; line-height: 150%;">
+                    <h1 style="text-align: center">Attributes</h1>
+                    <h2>zn-pages</h2>
+                    <p>
+                        zn-pages is the main directive used to specify that this is a angular-pages container.
+                        By default the layout is by row. You can specify column layout by using zn-pages="col".
+                    </p>
+
+                    <h2>zn-pages-start</h2>
+                    <p>
+                        You can also indicate the start row and page with zn-pages-start attribute. This attribute
+                        is zero (0) based, so the first page is page 0, second page is page 1, etc. If this
+                        attribute appears in the div container, then it indicates the starting row/column.
+                        If it's part of the UL, then it indicates the starting page.
+                    </p>
+
+                    <h2>zn-pages-swipe</h2>
+                    <p>
+                        This attribute, when placed at the outer div, indicates whether to enable swiping action
+                        for this container or not.
+                    </p>
+                </div>
+            </li>
+            <li style="background-color: #2980b9">
+                <div style="width: 50%; margin: 0 auto; line-height: 150%;">
+                    <h1 style="text-align: center">znPageManager</h1>
+                    <p>
+                        znPageManager is an angular service that provides several key functions so you can transition
+                        the pages with javascript.
+                    </p>
+                    <h2></h2>
+                </div>
+                <div style="width: 70%; margin: 0 auto; line-height: 150%;">
+                    <script src="https://gist.github.com/zhenjl/5907237.js"></script>
+                </div>
+            </li>
+       </ul>
         <ul zn-pages-start="1">
-            <li style="background-color: #1abc9c; width: 200px">info page</li>
-            <li style="background-color: #3498db">settings page</li>
-        </ul>
-        <ul zn-pages-start="1">
-            <li ng-repeat="val in colors track by $id($index)" style="background-color: {{ val }}; text-align: center; margin: 0 auto">{{ val }}</li>
+            <li ng-repeat="val in colors track by $id($index)" style="background-color: {{ val }}">
+                <div style="width: 50%; margin: 0 auto; line-height: 150%;">
+                    <h1 style="text-align: center">{{ val }}</h1>
+                    <p>
+                        This is an example page generated by an ng-repeat collection. There are 5 colors on the list,
+                        including ['#1abc9c', '#f1c40f', '#d35400', '#2c3e50', '#8e44ad'].
+                    </p>
+                    <p>
+                        Click on the following button to rotate the colors around. Each click will take the head of
+                        the color list and put it at the end of the list. This effectively changes the ng-repeat
+                        collection, and triggers angular-pages to update the list as well. However, you most likely
+                        won't notice any difference immediately unless you start moving around.
+                    </p>
+                    <button ng-click="rotateColor()">Rotate Color</button>
+                </div>
+            </li>
         </ul>
         <ul>
-            <li style="background-color: #95a5a6">categories</li>
+            <li style="background-color: #34495e">
+                <div style="width: 50%; margin: 0 auto; line-height: 150%;">
+                    <h1 style="text-align: center">Credits</h1>
+                    <a href="http://angularjs.org"><h2>AngularJS</h2></a>
+                    <p>
+                        Goes without saying.
+                    </p>
+                    <a href="https://github.com/revolunet/angular-carousel"><h2>angular-carousel</h2></a>
+                    <p>
+                        Cannot have created angular-pages without having the angular-carousel source code to learn
+                        from. It's a tremendous piece of work by @revolunet and you should definitely check it out.
+                    </p>
+                    <a href="http://topcoat.io"><h2>topcoat</h2></a>
+                    <p>
+                        All the icons are courtesy of topcoat. Very cool stuff.
+                    </p>
+                    <a href="http://flatuicolors.com/"><h2>Flat UI Colors</h2></a>
+                    <p>
+                        All the background colors are from here.
+                    </p>
+                </div>
+            </li>
+            <li style="background-color: #16a085">
+                <div style="width: 50%; margin: 0 auto; line-height: 150%;">
+                    <h1 style="text-align: center">The MIT License</h1>
+                    <p>
+                        Copyright (c) 2013 Zhen, LLC. http://zhen.io
+                    </p>
+                    <p>
+                        Permission is hereby granted, free of charge, to any person obtaining a copy
+                        of this software and associated documentation files (the "Software"), to deal
+                        in the Software without restriction, including without limitation the rights
+                        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+                        copies of the Software, and to permit persons to whom the Software is
+                        furnished to do so, subject to the following conditions:
+                    </p>
+                    <p>
+                        The above copyright notice and this permission notice shall be included in
+                        all copies or substantial portions of the Software.
+                    </p>
+                    <p>
+
+                        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+                        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+                        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+                        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+                        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+                        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+                        THE SOFTWARE.
+                    </p>
+                </div>
+            </li>
         </ul>
     </div>
-
-    <!--div zn-pages="col">
-        <ul zn-pages-start="2">
-            <li style="background-color: #1abc9c">info page</li>
-            <li style="background-color: #3498db">settings page</li>
-        </ul>
-        <ul zn-pages-start="3">
-            <li ng-repeat="val in colors track by $id($index)" style="background-color: {{ val }}; text-align: center; margin: 0 auto">{{ val }}</li>
-        </ul>
-        <ul>
-            <li style="background-color: #95a5a6">categories</li>
-        </ul>
-    </div-->
 
     <script src="//code.angularjs.org/1.1.5/angular.min.js"></script>
     <script src="src/angular-pages.js"></script>
@@ -196,7 +375,7 @@
         }]);
 
         app.factory('colors', function() {
-            var colorsList = ['#9b59b6', '#34495e', '#f1c40f', '#e74c3c'];
+            var colorsList = ['#1abc9c', '#f1c40f', '#d35400', '#2c3e50', '#8e44ad'];
             return {
                 colors: colorsList,
                 prependColor: function(color) {

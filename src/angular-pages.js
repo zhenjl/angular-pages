@@ -66,7 +66,9 @@ app.directive("znPagesCollection", ['znPageManager', 'Commons', function (znPage
                 "arguments": arguments
             });
 
-            var children = element.find("li"),
+            var lis = [];
+
+            var children = angular.element(element.children()[0]).children(),
                 ngRepeatElem = angular.element(children[0]),
                 expression = ngRepeatElem.attr('ng-repeat'),
                 containerId = attrs['znPagesContainerId'] ? attrs['znPagesContainerId'] : undefined,
@@ -142,7 +144,7 @@ app.directive("znPagesCollection", ['znPageManager', 'Commons', function (znPage
                     "width": width,
                     "height": height,
                     "layout": layout,
-                    "startPage": start,
+                    "startIndex": start,
                     "activeIndex": start,
                     "parent": containerId,
                     "dynamic": dynamic,
@@ -225,7 +227,7 @@ app.directive("znPages", ["znSwipe", 'znPageManager', 'Commons', function (znSwi
             });
 
             var layout = attrs['znPages'] === "col" ? attrs['znPages'] : "row",
-                children = element.find("ul"),
+                children = element.children(),
                 container = znPageManager.newContainer(),
                 containerId = container.getId();
 
@@ -529,12 +531,19 @@ app.service("znPageManager", ['Commons', function (Commons) {
 
     Collection.prototype.slideHome = function() {
         this.numMoved = 0;
+        this.activeIndex = this.startIndex;
+        this.activeBufferIndex = this.startIndex;
         this.buffer = [];
         this.reset = true;
         this.moved++;
     };
 
     Collection.prototype.updateBuffer = function (collection) {
+        Commons.log(3, {
+            "func": "Collection.updateBuffer",
+            "arguments": arguments
+        });
+
         if (!this.isDynamic()) {
             var active = Math.max(0, Math.min(this.activeIndex+this.numMoved, this.pages.length-1));
             this.activeIndex = active;
@@ -573,11 +582,11 @@ app.service("znPageManager", ['Commons', function (Commons) {
             bufferKeys.sort();
         }
 
-        if (this.buffer.length === 0) {
+        if (this.buffer.length === 0 || this.reset == true) {
             // buffer size is 0 means there's nothing in the buffer, most likely never set, so let's set
             // it up using the start page.
 
-            active = this.startPage;
+            active = this.startIndex;
         } else if (collectionKeys[this.activeIndex] !== bufferKeys[this.activeBufferIndex]) {
             // If the actual key in the collection pointed to by the page index in the collection
             // is no longer the same as the saved key, then we know the array has shifted and positions
@@ -590,7 +599,7 @@ app.service("znPageManager", ['Commons', function (Commons) {
                 }
             }
 
-            if (active === undefined) active = this.startPage;
+            if (active === undefined) active = this.startIndex;
         } else {
             // By now, we know the buffer has been set before, and that the saved key is the same
             // as the collection key that's pointed to by the page index, then we just keep
@@ -599,6 +608,7 @@ app.service("znPageManager", ['Commons', function (Commons) {
             active = this.activeIndex;
         }
 
+        var a = active;
         // active should be previous_active + change
         active = Math.max(0, Math.min(active + this.numMoved, collectionKeys.length - 1));
         bufferStart = Math.max(0, Math.min(active - 1, collectionKeys.length - 1));
@@ -646,7 +656,9 @@ app.service("znPageManager", ['Commons', function (Commons) {
             height: 0,
             width: 0,
             layout: "row",
-            swipe: true
+            swipe: true,
+            startIndex: 0,
+            reset: false
         };
 
         angular.extend(this, _options);
@@ -741,10 +753,10 @@ app.service("znPageManager", ['Commons', function (Commons) {
 
     Container.prototype.slideHome = function() {
         this.numMoved = 0;
-        this.activeIndex = this.start;
-        this.activeBufferIndex = this.start;
+        this.activeIndex = this.startIndex;
+        this.activeBufferIndex = this.startIndex;
 
-        for (var i = 0; i < this.length()-1; i++) {
+        for (var i = 0; i < this.length(); i++) {
             this.collections[i].slideHome();
         }
 
