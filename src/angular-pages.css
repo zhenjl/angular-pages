@@ -29,46 +29,71 @@
 
 .zn-pages-container {
     overflow: hidden;
-}
-
-.zn-pages-col {
-    height: 100%;
-    width: 100%;
-    display: inline-block;
-    white-space: nowrap;
-    font-size: 0;
-    vertical-align: top;
+    margin: 0;
+    padding: 0;
 }
 
 .zn-pages-row {
-    height: 100%;
-    width: 100%;
-    font-size: 0;
+    height: inherit;
+    width: inherit;
+    margin: 0;
+    padding: 0;
 }
 
-.zn-pages-row > ul > li, .zn-pages-col > ul > li {
-    list-style-type: none;
-    height: 100%;
-    width: 100%;
-    white-space: normal;
-    vertical-align: top;
-}
-
-.zn-pages-row > ul, .zn-pages-col > ul {
+.zn-pages-row > ul {
     overflow: visible;
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    height: 100%;
-    width: 100%;
-    font-size: 0;
-}
-
-.zn-pages-row > ul {
+    height: inherit;
+    width: inherit;
     display: block;
     white-space: nowrap;
+    list-style: none;
+    font-size: 0;
 }
 
 .zn-pages-row > ul > li {
     display: inline-block;
+    list-style: none;
+    height: inherit;
+    width: inherit;
+    white-space: normal;
+    vertical-align: top;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.zn-pages-col {
+    height: inherit;
+    width: inherit;
+    white-space: nowrap;
+    vertical-align: top;
+    margin: 0;
+    padding: 0;
+    font-size: 0;
+    display: inline-block;
+}
+
+.zn-pages-col > ul {
+    overflow: visible;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    height: inherit;
+    width: inherit;
+    list-style: none;
+    white-space: normal;
+}
+
+.zn-pages-col > ul > li {
+    display: block;
+    height: inherit;
+    width: inherit;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    overflow: hidden;
 }

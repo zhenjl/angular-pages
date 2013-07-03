@@ -6,12 +6,6 @@
     <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width"/>
     <link href='src/angular-pages.css' rel='stylesheet' type='text/css'>
     <style>
-        * {
-            font-family: calibri, sans-serif;
-            font-size: 20px;
-            font-weight: normal;
-        }
-
         html, body {
             margin: 0;
             padding: 0;
@@ -19,24 +13,29 @@
             height: 100%;
             width: 100%;
             font-family: calibri, sans-serif;
-            font-size: 20px;
+            font-size: 62.5%;
+            font-weight: normal;
+        }
+
+        body {
+            font-size: 2rem;
         }
 
         h1 {
-            font-size: 36px;
+            font-size: 3.6rem;
             font-weight: normal;
         }
 
         h2 {
-            font-size: 28px;
+            font-size: 2.8rem;
             font-weight: normal;
         }
 
         .zn-pages-container2 {
-            height: 200px;
-            width: 200px;
-            top: 200px;
-            left: 200px;
+            height: 20rem;
+            width: 20rem;
+            top: 20rem;
+            left: 20rem;
             position: absolute;
         }
 
@@ -50,19 +49,19 @@
         }
 
         div.nav {
-            back-ground: white;
+            background-color: white;
             opacity: 0.5;
-            width: 90px;
-            height: 90px;
-            bottom: 10px;
-            right: 10px;
+            width: 9rem;
+            height: 9rem;
+            bottom: 1rem;
+            right: 1rem;
             position: absolute;
             z-index: 10;
             padding: 0;
             margin: 0;
-            -webkit-border-radius: 50px;
-            -moz-border-radius: 50px;
-            border-radius: 50px;
+            -webkit-border-radius: 50%;
+            -moz-border-radius: 50%;
+            border-radius: 50%;
         }
 
         div.nav > ul {
@@ -75,25 +74,34 @@
         div.nav > ul > li, div.nav > ul > li > img {
             float: left;
             font-size: 0;
-            width: 30px;
-            height: 30px;
+            width: 3rem;
+            height: 3rem;
             margin: 0;
             padding: 0;
         }
 
-        div.toc {
-            margin: 0 auto;
-            padding: 0;
-            width: 90%;
-            line-height: 150%;
+        ul.toc {
+            list-style: disc outside;
+            line-height: 120%;
         }
 
-        div.toc ul {
-            list-style: disc outside;
+        ul.toc > li {
+            font-size: 1.8rem;
         }
 
         a {
             color: white;
+        }
+
+        div.content {
+            width: 60%;
+            line-height: 150%;
+            margin: 0 auto;
+            padding: 0;
+            top: 2.5rem;
+            box-sizing: border-box;
+            font-size: 2.2rem;
+            position: relative;
         }
     </style>
 </head>
@@ -105,7 +113,7 @@
 
     <div style="width: 100%; position: absolute; left: 0; bottom: 40px; z-index: 10">
         <div style="background-color: white; opacity: 0.5; width: 40%; margin: 0 auto; line-height: 150%; text-align: center; height: 30px;">
-	        <a href="https://news.ycombinator.com/item?id=5976364" style="color: #d35400">Feedbacks and comments encouraged</a>
+			<a href="https://news.ycombinator.com/item?id=5976364" style="color: #d35400">Feedbacks and comments encouraged</a>
         </div>
     </div>
 
@@ -136,9 +144,9 @@
     <div zn-pages zn-pages-start="0" zn-pages-swipe>
         <ul zn-pages-start="1">
             <li style="background-color: #d35400; width: 250px">
-                <div class="toc">
+                <div class="content" style="width: 90%">
                     <h1>Pages</h1>
-                    <ul>
+                    <ul class="toc">
                         <li>Top Row
                             <ul>
                                 <li>Pages</li>
@@ -168,7 +176,7 @@
                 </div>
             </li>
             <li style="background-color: #3498db">
-                <div style="width: 50%; margin: 0 auto; line-height: 150%;">
+                <div class="content">
                     <h1 style="text-align: center">Angular Pages</h1>
                     <p>
                         Angular-pages is a angular.js directive that lays out pages in rows and columns, and then
@@ -189,13 +197,13 @@
                 </div>
             </li>
             <li style="background-color: #9b59b6; font-size: 14px; color: white; ">
-                <div style="width: 70%; margin: 0 auto; line-height: 150%;">
+                <div class="content" style="width: 70%; font-size: 1.4rem">
                     <h1 style="text-align: center">An Example</h1>
                     <script src="https://gist.github.com/zhenjl/5906950.js"></script>
                 </div>
             </li>
             <li style="background-color: #27ae60">
-                <div style="width: 50%; margin: 0 auto; line-height: 150%;">
+                <div class="content">
                     <h1 style="text-align: center">Containers, Collections, Pages</h1>
                     <p>
                         Angular-pages is fairly simple to setup. There are three layers to consider: container,
@@ -219,7 +227,7 @@
                 </div>
             </li>
             <li style="background-color: #f39c12">
-                <div style="width: 50%; margin: 0 auto; line-height: 150%;">
+                <div class="content">
                     <h1 style="text-align: center">Attributes</h1>
                     <h2>zn-pages</h2>
                     <p>
@@ -243,22 +251,21 @@
                 </div>
             </li>
             <li style="background-color: #2980b9">
-                <div style="width: 50%; margin: 0 auto; line-height: 150%;">
+                <div class="content">
                     <h1 style="text-align: center">znPageManager</h1>
                     <p>
                         znPageManager is an angular service that provides several key functions so you can transition
                         the pages with javascript.
                     </p>
-                    <h2></h2>
                 </div>
-                <div style="width: 70%; margin: 0 auto; line-height: 150%;">
+                <div class="content" style="width: 70%; font-size: 1.4rem">
                     <script src="https://gist.github.com/zhenjl/5907237.js"></script>
                 </div>
             </li>
        </ul>
         <ul zn-pages-start="1">
             <li ng-repeat="val in colors track by $id($index)" style="background-color: {{ val }}">
-                <div style="width: 50%; margin: 0 auto; line-height: 150%;">
+                <div class="content">
                     <h1 style="text-align: center">{{ val }}</h1>
                     <p>
                         This is an example page generated by an ng-repeat collection. There are 5 colors on the list,
@@ -276,7 +283,7 @@
         </ul>
         <ul>
             <li style="background-color: #34495e">
-                <div style="width: 50%; margin: 0 auto; line-height: 150%;">
+                <div class="content">
                     <h1 style="text-align: center">Credits</h1>
                     <a href="http://angularjs.org"><h2>AngularJS</h2></a>
                     <p>
@@ -297,8 +304,8 @@
                     </p>
                 </div>
             </li>
-            <li style="background-color: #16a085">
-                <div style="width: 50%; margin: 0 auto; line-height: 150%;">
+            <li style="background-color: #27ae60">
+                <div class="content">
                     <h1 style="text-align: center">The MIT License</h1>
                     <p>
                         Copyright (c) 2013 Zhen, LLC. http://zhen.io
@@ -396,15 +403,14 @@
             }
         });
     </script>
-	<script>
-			  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-							    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-						  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-						    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+            (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+            m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
 
-							  ga('create', 'UA-681691-30', 'zhenjl.github.io');
-							    ga('send', 'pageview');
-
-						</script>
+        ga('create', 'UA-681691-30', 'zhenjl.github.io');
+        ga('send', 'pageview');
+    </script>
 </body>
 </html>
