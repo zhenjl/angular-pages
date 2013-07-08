@@ -56,7 +56,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: auto;
 }
 
 .zn-pages-col {
@@ -80,6 +80,6 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: auto;
     white-space: normal;
 }
