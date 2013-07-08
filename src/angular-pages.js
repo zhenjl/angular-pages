@@ -3,18 +3,6 @@
  *
  * MIT License
  *
- * Angular directive for managing rows/columns of pages and transitions.
- * http://github.com/zhenjl/angular-pages
- *
- * Let me start by thanking @revolunet for his awesome angular-carousel directive
- * (https://github.com/revolunet/angular-carousel). Angular-pages is heavily inspired by
- * and borrowed heavily from angular-carousel.
- *
- * This is my first angular.js project. In fact, this is my first semi-real coding project
- * in the past 7 years. Almost all the frameworks, tools, IDEs have changed in that time.
- * So being able to learn from angular-carousel is a huge advantage. @revolunet has done
- * an amazing job with it and if you are looking for a carousel tool, definitely check it out.
- *
  */
 
 'use strict';
@@ -23,376 +11,909 @@ var app = angular.module("angular-pages", []);
 
 app.directive("znPagesPage", ['znPageManager', 'Commons', function (znPageManager, Commons) {
 
+    function process() {
+        Commons.log(2, {
+            "func": "znPagesPage.process",
+            "arguments": arguments
+        });
+
+        var scope, element, attrs, phase;
+
+        if (arguments.length === 3) {
+            scope = arguments[0];
+            element = arguments[1];
+            attrs = arguments[2];
+            phase = "link";
+        } else {
+            element = arguments[0];
+            attrs = arguments[1];
+            phase = "compile";
+        }
+
+        var id = attrs.id || undefined,
+            containerId = attrs.znPagesContainerId || undefined,
+            collectionId = attrs.znPagesCollectionId || undefined,
+            isNgInclude = typeof attrs.ngInclude !== 'undefined';
+
+        Commons.log(3, {
+            id: id,
+            containerId: containerId,
+            collectionId: collectionId,
+            isNgInclude: isNgInclude
+        });
+
+        if (containerId === undefined || collectionId === undefined) return;
+
+        var container = znPageManager.container(containerId),
+            collection = container.collection(collectionId),
+            page;
+
+        if (container === undefined || collection === undefined) return;
+
+        // If ID exist then it means we've compiled before, which means we have created the page object
+        // for this already. So no ID, create new page; if ID, get existing page.
+        if (id) {
+            page = collection.page(id);
+        } else {
+            page = collection.newPage();
+            id = page.getId();
+        }
+
+        if (page.isReady()) return page;
+
+        page.attr({
+            "compiles": page.attr("compiles") + 1,
+            "isNgInclude": isNgInclude,
+            "parent": collection
+        });
+
+        Commons.log(3, {
+            id: id,
+            "compiles": collection.attr("compiles"),
+            isNgInclude: isNgInclude,
+            parent: collection
+        });
+
+        element.attr('id', id);
+        attrs['id'] = id;
+
+        return page;
+    }
+
+    function finalize(scope, element, attrs) {
+        Commons.log(2, {
+            "func": "znPagesPage.finalize",
+            "arguments": arguments,
+            "id": pageId
+        });
+
+        var page = scope.page,
+            pageId = page.getId(),
+            width = element[0].offsetWidth,
+            height = element[0].offsetHeight;
+
+        if (page.isReady()) return;
+
+        page.attr({
+            "width": width,
+            "height": height,
+            "ready": true
+        });
+
+        Commons.log(3, {
+            id: pageId,
+            "width": width,
+            "height": height,
+            "ready": true
+        });
+
+        scope.$emit("znPagesPageReady", {
+            id: pageId
+        });
+    }
+
     return {
         restrict: "A",
         scope: true,
         compile: function (element, attrs) {
-            Commons.log(3, {
+            Commons.log(2, {
                 "func": "znPagesPage.compile",
                 "arguments": arguments
             });
 
-            var collectionId = attrs['znPagesCollectionId'] ? attrs['znPagesCollectionId'] : undefined,
-                containerId = attrs['znPagesContainerId'] ? attrs['znPagesContainerId'] : undefined;
+            var tagName = element[0].tagName.toLowerCase();
+            if (tagName !== "li") {
+                Commons.log(1, "LI, not " + tagName + ", must be used for collections.");
+                return;
+            }
 
-            if (containerId === undefined || collectionId === undefined) return;
-
-            var container = znPageManager.container(containerId),
-                collection = container.collection(collectionId);
-
-            if (container === undefined || collection === undefined) return;
-
-            var page = collection.newPage(),
+            var page = process(element, attrs),
                 pageId = page.getId();
 
-            element.attr("zn-id", pageId);
-
             return function (scope, element, attrs) {
-                page.attr("width", element[0].getBoundingClientRect().width);
-                page.attr("height", element[0].getBoundingClientRect().height);
+                Commons.log(2, {
+                    "func": "znPagesPage.link",
+                    "arguments": arguments,
+                    "id": pageId
+                });
+
+                if (!page.isReady()) {
+                    scope.page = page;
+                    scope.name = pageId;
+
+                    var compiles = page.attr("compiles"),
+                        isNgInclude = page.attr("ngInclude");
+
+                    if (isNgInclude) {
+                        scope.$on('$includeContentLoaded', function (event) {
+                            Commons.log(2, {
+                                "func": "znPagesPage.link.$on $includeContentLoaded",
+                                "arguments": arguments,
+                                "id": pageId
+                            });
+
+                            if (event.targetScope.name === pageId) {
+                                process(scope, element, attrs);
+                                finalize(scope, element, attrs);
+                            }
+                        });
+                    } else {
+                        Commons.log(2, {
+                            "func": "znPagesPage.link.NOT_$includeContentLoaded",
+                            "arguments": arguments,
+                            "id": pageId
+                        });
+
+                        // For the page, if it's not ng-include, then we just go ahead and finalize
+                        // Unlike collection and container, for those, if the element is not ng-include,
+                        // their children may.
+                        // for page, there's no more children ng-include that we care about.
+                        finalize(scope, element, attrs);
+                    }
+                }
             }
         }
     }
 }]);
 
-app.directive("znPagesCollection", ['znPageManager', 'Commons', function (znPageManager, Commons) {
+app.directive("znPagesCollection", ['$compile', 'znPageManager', 'Commons', function ($compile, znPageManager, Commons) {
 
-    return {
-        restrict: "A",
-        scope: true,
-        compile: function (element, attrs) {
-            Commons.log(3, {
-                "func": "znPagesCollection.compile",
-                "arguments": arguments
-            });
+    function process() {
+        Commons.log(2, {
+            "func": "znPagesCollection.process",
+            "arguments": arguments
+        });
 
-            var lis = [];
+        var scope, element, attrs, phase;
 
-            var children = angular.element(element.children()[0]).children(),
+        if (arguments.length === 3) {
+            scope = arguments[0];
+            element = arguments[1];
+            attrs = arguments[2];
+            phase = "link";
+        } else {
+            element = arguments[0];
+            attrs = arguments[1];
+            phase = "compile";
+        }
+
+        var layout = attrs.znPagesLayout === "col" ? attrs.znPagesLayout : "row",
+            id = attrs.id || undefined,
+            containerId = attrs.znPagesContainerId || undefined,
+            start = typeof attrs.znPagesStart !== 'undefined' ? Math.max(0, parseInt(attrs.znPagesStart)) : 0,
+            isNgInclude = typeof attrs.ngInclude !== 'undefined',
+            collection, container, ngRepeatCollection,
+            dynamic = false;
+
+        Commons.log(3, {
+            id: id,
+            layout: layout,
+            containerId: containerId,
+            start: start,
+            isNgInclude: isNgInclude,
+            dynamic: dynamic
+        });
+
+        if (containerId === undefined) return;
+
+        container = znPageManager.container(containerId);
+
+        // If ID exist then it means we've compiled before, which means we have created the collection object
+        // for this already. So no ID, create new collection; if ID, get existing collection.
+        if (id) {
+            collection = container.collection(id);
+        } else {
+            collection = container.newCollection();
+            id = collection.getId();
+            element.addClass("zn-pages-" + layout);
+        }
+
+        if (collection.isReady()) return collection;
+
+        attrs['id'] = id;
+        attrs['zn-pages-layout'] = layout;
+        attrs['zn-pages-start'] = start;
+
+        element.attr({
+            "id": id,
+            "zn-pages-layout": layout,
+            "zn-pages-start": start
+        });
+
+        element.removeClass("zn-animate").addClass("zn-noanimate");
+
+        Commons.log(3, element[0].innerHTML);
+        // If it's not ng-include, then let's check to see if this is ng-repeat
+        //if (!isNgInclude) {
+                // Get the page elements (LIs)
+            var children = element.children(),
+
+                // Get the first LI to see if it has ng-repeat attribute
                 ngRepeatElem = angular.element(children[0]),
-                expression = ngRepeatElem.attr('ng-repeat'),
-                containerId = attrs['znPagesContainerId'] ? attrs['znPagesContainerId'] : undefined,
-                container = znPageManager.container(containerId),
-                collection = container.newCollection(),
-                collectionId = collection.getId(),
-                collectionName;
 
-            if (containerId === undefined || !container) return;
+                // Get the ng-repeat expression
+                expression = ngRepeatElem.attr('ng-repeat');
 
+            Commons.log(3, "---------------- ", expression, ngRepeatElem);
+
+            // If this is ng-repeat, then extract the collection name in the expression, and replace
+            // it with our own.
             if (expression !== undefined) {
                 var match = expression.match(/^\s*(.+)\s+in\s+(.*?)\s*(\s+track\s+by\s+(.+)\s*)?$/),
                     lhs = match[1],
                     trackByExp = match[4];
 
-                collectionName = match[2];
+                ngRepeatCollection = match[2];
                 ngRepeatElem.attr('ng-repeat', lhs + ' in znPagesBuffer track by ' + trackByExp);
-            } else {
-                for (var i = 0; i < children.length; i++) {
-                    angular.element(children[i]).attr({
-                        "zn-pages-page": "",
-                        "zn-pages-collection-id": collectionId,
-                        "zn-pages-container-id": containerId
-                    });
-                }
+                dynamic = true;
             }
+        //}
 
-            element.attr("zn-id", collectionId);
-            element.addClass("zn-noanimate");
+        collection.attr({
+            "compiles": collection.attr("compiles") + 1,
+            "layout": layout,
+            "startIndex": start,
+            "activeIndex": start,
+            "parent": container,
+            "dynamic": dynamic,
+            "ngInclude": isNgInclude,
+            "collectionName": ngRepeatCollection
+        });
 
-            return function (scope, element, attrs) {
-                Commons.log(3, {
-                    "func": "znPagesCollection.link",
-                    "arguments": arguments
+        Commons.log(3, {
+            "id": id,
+            "compiles": collection.attr("compiles"),
+            "layout": layout,
+            "startIndex": start,
+            "activeIndex": start,
+            "parent": container,
+            "dynamic": dynamic,
+            "ngInclude": isNgInclude,
+            "collectionName": ngRepeatCollection
+        });
+
+        if (!ngRepeatCollection) {
+            var children = element.children(),
+                childrenCount = children.length;
+
+            for (var i = 0; i < childrenCount; i++) {
+                var child = children[i];
+
+                angular.element(child).attr({
+                    "zn-pages-page": "",
+                    "zn-pages-collection-id": id,
+                    "zn-pages-container-id": containerId
                 });
 
-                var layout = attrs['znPagesLayout'] === "col" ? "col" : "row",
-                    start = attrs['znPagesStart'] ? Math.max(0, parseInt(attrs['znPagesStart'])) : 0,
-                    width = element[0].getBoundingClientRect().width,
-                    height = element[0].getBoundingClientRect().height,
-                    ngRepeatCollection = null,
-                    dynamic = false;
-
-                scope.collection = collection;
-
-                if (collectionName) {
-                    ngRepeatCollection = scope.$eval(collectionName);
-                    dynamic = true;
-
-                    scope.$watch(collectionName, function (newValue, oldValue) {
-                        Commons.log(3, {
-                            "func": "znPagesCollection.link.$watch " + collectionName,
-                            "arguments": arguments
-                        });
-
-                        if (newValue != undefined && !angular.equals(newValue, oldValue)) {
-                            collection.updateBuffer(newValue);
-                            scope.znPagesBuffer = collection.getBuffer();
-
-                            if (collection.width === 0 || collection.height === 0) {
-                                collection.attr({
-                                    "width": element[0].getBoundingClientRect().width,
-                                    "height": element[0].getBoundingClientRect().height
-                                });
-                            }
-
-                            Commons.slideTo(element, collection, false);
-                        }
-                    }, true);
-                }
-
-                collection.attr({
-                    "width": width,
-                    "height": height,
-                    "layout": layout,
-                    "startIndex": start,
-                    "activeIndex": start,
-                    "parent": containerId,
-                    "dynamic": dynamic,
-                    "collection": ngRepeatCollection
-                });
-
-                if (collection.isDynamic()) {
-                    collection.updateBuffer();
-                    scope.znPagesBuffer = collection.getBuffer();
-                }
-
-                Commons.slideTo(element, collection, false);
-
-                scope.$watch("collection.hasMoved()", function(newValue, oldValue) {
-                    Commons.log(3, {
-                        "func": "znPagesCollection.$watch collection.hasMoved()",
-                        "arguments": arguments
-                    });
-
-                    if (newValue != undefined && newValue !== oldValue) {
-                        if (collection.attr("reset")) {
-                            scope.znPagesBuffer = collection.updateBuffer();
-                            Commons.slideTo(element, collection, true);
-                            collection.attr("reset", false);
-                        } else {
-                            Commons.slideTo(element, collection, true);
-                            collection.updateBuffer();
-                        }
-                    }
-                });
-
-                // the transitionEnd event listener only gets executed when there's animation
-                // If animation is set to none, then this will not get called
-
-                element[0].addEventListener(Commons.whichTransitionEvent(), function(event) {
-
-                    if (event.target.getAttribute('zn-id').match(/^zn-pages-collection/)) {
-                        scope.$apply(function() {
-                            Commons.log(3, {
-                                "func": "znPagesCollection.link.addEventListener transitionEnd",
-                                "arguments": arguments
-                            });
-
-                            var collection = scope.collection,
-                                numMoved = collection.attr("numMoved");
-
-                            if (collection.isDynamic()) {
-                                var newBuffer = collection.getBuffer(),
-                                    activeBufferIndex = collection.attr("activeBufferIndex");
-
-                                // If the new buffer and the old buffer are the same, then it means we are at
-                                // the top of the collection. So let's not do anything.
-                                //
-                                // However, if the buffers are different, then let's make sure it's displaying the
-                                // the updated active page, which should be the same page content as before, assuming
-                                // the same page content exist in the new buffer
-
-                                if (!angular.equals(newBuffer, scope.znPagesBuffer)) {
-                                    scope.znPagesBuffer = newBuffer;
-                                    Commons.slideTo(element, collection, false);
-                                }
-                            }
-                        });
-                    }
-                }, false);
+                // Only run compile explicitly if in link phase
+                if (phase === "link") $compile(child)(scope);
             }
+        } else if (isNgInclude && ngRepeatCollection) {
+            Commons.log(3, "++++++++++++++ DING DING DING" + ngRepeatCollection);
         }
-    }
-}]);
 
-app.directive("znPages", ["znSwipe", 'znPageManager', 'Commons', function (znSwipe, znPageManager, Commons) {
+        return collection;
+    }
+
+    function finalize(scope, element, attrs) {
+        Commons.log(2, {
+            "func": "znPagesCollection.finalize",
+            "arguments": arguments
+        });
+
+        var width = element[0].offsetWidth,
+            height = element[0].offsetHeight,
+            collection = scope.collection,
+            id = collection.getId(),
+            layout = collection.attr("layout"),
+            compiles = collection.attr("compiles");
+
+        if (collection.isReady()) return;
+
+        collection.attr({
+            "width": width,
+            "height": height
+        });
+
+        Commons.log(2, {
+            id: id,
+            layout: layout,
+            compiles: compiles,
+            width: width,
+            height: height
+        });
+
+        if (collection.isDynamic()) {
+
+            collection.updateBuffer(scope.$eval(collection.attr("collectionName")));
+            scope.znPagesBuffer = collection.getBuffer();
+        } else {
+            collection.updateBuffer();
+        }
+
+        Commons.log(3, {
+            "func": "znPagesCollection.finalize.scopeFinalized",
+            id: id,
+        });
+
+        scope.$watch("collection.hasMoved()", function (moved) {
+            Commons.log(2, {
+                "func": "znPagesCollection.$watch collection.hasMoved()",
+                "arguments": arguments,
+                "id": id
+            });
+
+            if (moved !== undefined) {
+                var animate = !collection.attr("restart");
+                Commons.slideTo(element, collection, animate);
+                collection.updateBuffer();
+                collection.attr("restart", false);
+            }
+        });
+
+        collection.attr("ready", true);
+
+        Commons.log(3, "++++++++++ emit ready", {
+            id: id
+        });
+
+        scope.$emit("znPagesCollectionReady", {
+            id: id
+        });
+    }
+
+    function pagesReady(collection) {
+        var pages = collection.attr("pages"),
+            pageCount = pages.length,
+            ready = true;
+
+        for (var i = 0; i < pageCount; i++) {
+            ready = ready && pages[i].isReady();
+        }
+
+        return ready;
+    }
 
     return {
         restrict: "A",
         scope: true,
         compile: function (element, attrs) {
-            Commons.log(3, {
+            Commons.log(2, {
+                "func": "znPagesCollection.compile",
+                "arguments": arguments
+            });
+
+            var tagName = element[0].tagName.toLowerCase();
+            if (tagName !== "ul") {
+                Commons.log(1, "UL, not " + tagName + ", must be used for collections.");
+                return;
+            }
+
+            var collection = process(element, attrs),
+                collectionId = collection.getId();
+
+            return function (scope, element, attrs) {
+                Commons.log(2, {
+                    "func": "znPagesCollection.link",
+                    "arguments": arguments,
+                    "id": collectionId
+                });
+
+                if (!collection.isReady()) {
+                    scope.collection = collection;
+                    scope.name = collectionId;
+
+                    var layout = collection.attr("layout"),
+                        dynamic = collection.isDynamic(),
+                        isNgInclude = collection.attr("ngInclude"),
+                        compiles = collection.attr("compiles"),
+                        collectionName = collection.attr("collectionName");
+
+                    if (!dynamic) {
+                        scope.$on('znPagesPageReady', function (event) {
+                            Commons.log(2, {
+                                "func": "znPagesCollection.link.$on znPagesPageReady",
+                                "arguments": arguments,
+                                "id": collectionId
+                            });
+
+                            if (pagesReady(collection)) {
+                                finalize(scope, element, attrs);
+                            }
+                        });
+                    }
+
+                    if (dynamic) {
+                        if (compiles === 1) {
+                            // if dynamic then it means this is a ng-repeat element, in which case
+                            // we make sure we watch for any changes
+                            scope.$watch(collectionName, function (newValue, oldValue) {
+                                Commons.log(2, {
+                                    "func": "znPagesCollection.link.$watch " + collectionName,
+                                    "arguments": arguments,
+                                    "id": collectionId
+                                });
+
+                                if (newValue != undefined && !angular.equals(newValue, oldValue)) {
+                                    collection.updateBuffer(newValue);
+                                    scope.znPagesBuffer = collection.getBuffer();
+
+                                    if (collection.width === 0 || collection.height === 0) {
+                                        collection.attr({
+                                            "width": element[0].offsetWidth,
+                                            "height": element[0].offsetHeight
+                                        });
+                                    }
+
+                                    Commons.slideTo(element, collection, false);
+                                }
+                            }, true);
+                        }
+
+                        finalize(scope, element, attrs);
+                    }
+
+                    if (isNgInclude) {
+                        if (compiles === 1) {
+                            scope.$on('$includeContentLoaded', function (event) {
+                                Commons.log(2, {
+                                    "func": "znPagesCollection.link.$includeContentLoaded",
+                                    "arguments": arguments,
+                                    "id": collectionId
+                                });
+
+                                if (event.targetScope.name === collectionId) process(scope, element, attrs);
+                            });
+                        }
+                    } else {
+                        Commons.log(2, {
+                            "func": "znPagesCollection.link.NOT_$includeContentIncluded",
+                            "arguments": arguments,
+                            "id": collectionId
+                        });
+
+                        if (!pagesReady(collection)) {
+                            process(scope, element, attrs);
+                        } else {
+                            finalize(scope, element, attrs);
+                        }
+                    }
+
+                    if (compiles === 1) {
+                        // the transitionEnd event listener only gets executed when there's animation
+                        // If animation is set to none, then this will not get called
+                        element[0].addEventListener(Commons.whichTransitionEvent(), function (event) {
+                            if (event.target.getAttribute('id').match(/^zn-pages-collection/)) {
+                                scope.$apply(function () {
+                                    Commons.log(2, {
+                                        "func": "znPagesCollection.link.addEventListener transitionEnd",
+                                        "arguments": arguments,
+                                        "id": collectionId
+                                    });
+
+                                    var collection = scope.collection,
+                                        numMoved = collection.attr("numMoved");
+
+                                    if (collection.isDynamic()) {
+                                        var newBuffer = collection.getBuffer(),
+                                            activeBufferIndex = collection.attr("activeBufferIndex");
+
+                                        // If the new buffer and the old buffer are the same, then it means we are at
+                                        // the top of the collection. So let's not do anything.
+                                        //
+                                        // However, if the buffers are different, then let's make sure it's displaying the
+                                        // the updated active page, which should be the same page content as before, assuming
+                                        // the same page content exist in the new buffer
+
+                                        if (!angular.equals(newBuffer, scope.znPagesBuffer)) {
+                                            scope.znPagesBuffer = newBuffer;
+                                            Commons.slideTo(element, collection, false);
+                                        }
+                                    }
+                                });
+                            }
+                        }, false);
+                    }
+                }
+            }
+        }
+    }
+}]);
+
+app.directive("znPages", ['$compile', "znSwipe", 'znPageManager', 'Commons', function ($compile, znSwipe, znPageManager, Commons) {
+
+    function process() {
+        Commons.log(2, {
+            "func": "znPages.process",
+            "arguments": arguments
+        });
+
+        var scope, element, attrs, phase;
+
+        if (arguments.length === 3) {
+            scope = arguments[0];
+            element = arguments[1];
+            attrs = arguments[2];
+            phase = "link";
+        } else {
+            element = arguments[0];
+            attrs = arguments[1];
+            phase = "compile";
+        }
+
+        var layout = attrs.znPages === "col" ? attrs.znPages : "row",
+            id = attrs.id || undefined,
+            start = typeof attrs.znPagesStart !== 'undefined' ? Math.max(0, parseInt(attrs.znPagesStart)) : 0,
+            isSwipe = typeof attrs.znPagesSwipe !== 'undefined',
+            isNgInclude = typeof attrs.ngInclude !== 'undefined',
+            container;
+
+        // If ID exist then it means we've compiled before, which means we have created the container object
+        // for this already. So no ID, create new container; if ID, get existing container.
+        if (id) {
+            container = znPageManager.container(id);
+        } else {
+            container = znPageManager.newContainer();
+            id = container.getId();
+            element.addClass("zn-pages-" + layout);
+        }
+
+        if (container.isReady()) return container;
+
+        container.attr({
+            "compiles": container.attr("compiles")+1,
+            "startIndex": start,
+            "layout": layout,
+            "isSwipe": isSwipe,
+            "ngInclude": isNgInclude
+        });
+
+        attrs['id'] = id;
+        attrs['zn-pages-layout'] = layout;
+        attrs['zn-pages-start'] = start;
+
+        element.attr({
+            "id": id,
+            "zn-pages-layout": layout,
+            "zn-pages-start": start
+        });
+
+        Commons.log(3, {
+            id: id,
+            compiles: container.attr("compiles"),
+            layout: layout,
+            start: start,
+            isSwipe: isSwipe,
+            isNgInclude: isNgInclude
+        });
+
+        var children = element.children(),
+            childrenCount = children.length;
+
+
+        // For each child, we set it up to be a zn-pages-collection. This will trigger the compile phase
+        // for each of the collections.
+        for (var i = 0; i < childrenCount; i++) {
+            var child = angular.element(children[i]),
+                childStart = child.attr("zn-pages-start") ? parseInt(child.attr("zn-pages-start")) : 0;
+
+            child.attr({
+                'zn-pages-collection': "",
+                'zn-pages-container-id': id,
+                'zn-pages-layout': layout,
+                'zn-pages-start': childStart
+            });
+
+            Commons.log(3, "********** modifying child " + i, {
+                'zn-pages-collection': "",
+                'zn-pages-container-id': id,
+                'zn-pages-layout': layout,
+                'zn-pages-start': childStart
+            });
+
+            child.addClass("zn-pages-" + layout);
+
+            // Call $compile if this is the link phase. Otherwise it means we are in the compile phase,
+            // which means no need to call $compile explicitly
+            if (phase === "link") $compile(child)(scope);
+        }
+
+        return container;
+    }
+
+    function finalize(scope, element, attrs) {
+        Commons.log(2, {
+            "func": "znPages.finalize",
+            "arguments": arguments
+        });
+
+        var container = scope.container,
+            containerId = container.getId(),
+            childrenElem = element.children(),
+            width = element[0].offsetWidth,
+            height = element[0].offsetHeight,
+            layout = container.attr("layout"),
+            isSwipe = container.attr("isSwipe"),
+            compiles = container.attr("compiles");
+
+        if (container.isReady()) return;
+
+        container.attr({
+            "width": width,
+            "height": height
+        });
+
+        Commons.log(3, {
+            id: containerId,
+            layout: layout,
+            isSwipe: isSwipe,
+            compiles: compiles,
+            width: width,
+            height: height
+        });
+
+        container.updateBuffer();
+
+        scope.$watch("container.hasMoved()", function (newValue, oldValue) {
+            Commons.log(2, {
+                "func": "znPages.finalize.$watch container.hasMoved()",
+                "arguments": arguments,
+                "id": containerId
+            });
+
+            if (newValue != undefined && newValue !== oldValue) {
+                var animate = !container.attr("restart");
+                Commons.slideTo(element, container, animate);
+                container.updateBuffer();
+                container.attr("restart", false);
+            }
+        });
+
+        if (isSwipe) {
+            Commons.log(2, {
+                "func": "znPages.finalize.isSwipe",
+                "id": containerId
+            });
+
+            var startPos,            // coordinates of the last position
+                moveX;               // moving horizontally (X) or vertically (!X)
+
+            znSwipe.bind(element, {
+                start: function (coords) {
+                    startPos = coords;
+                    moveX = undefined;
+                },
+
+                move: function (coords) {
+                    if (!startPos) return;
+
+                    if (moveX === undefined) {
+                        var totalX = Math.abs(coords.x - startPos.x),
+                            totalY = Math.abs(coords.y - startPos.y);
+                        moveX = (totalX > totalY);
+                    }
+
+                    var e, cm, offset, ratio, newX, newY;
+
+                    if (moveX) {
+                        offset = coords.x - startPos.x;
+
+                        if (layout === "col") {
+                            e = element;
+                            cm = container;
+                        } else {
+                            cm = container.attr("collections")[container.attr("activeIndex")];
+                            e = angular.element(childrenElem[container.attr("activeIndex")]);
+                        }
+
+                        ratio = ((cm.isHead() && offset > 0) || (cm.isTail() && offset < 0)) ? 3 : 1;
+                        newX = cm.getPosition(cm.attr("activeBufferIndex")).width + Math.round(offset / ratio);
+
+                        Commons.slideX(e, newX, false);
+                    } else {
+                        offset = coords.y - startPos.y;
+
+                        if (layout === "col") {
+                            cm = container.attr("collections")[container.attr("activeIndex")];
+                            e = angular.element(childrenElem[container.attr("activeIndex")]);
+                        } else {
+                            e = element;
+                            cm = container;
+                        }
+
+                        ratio = ((cm.isHead() && offset > 0) || (cm.isTail() && offset < 0)) ? 3 : 1;
+                        newY = cm.getPosition(cm.attr("activeBufferIndex")).height + Math.round(offset / ratio);
+
+                        Commons.slideY(e, newY, false);
+                    }
+                },
+
+                end: function (coords) {
+                    if (!startPos || moveX == undefined) return;
+
+                    scope.$apply(function () {
+                        var cm = null,
+                            childId = null,
+                            delta = 0,
+                            move = false,
+                            container = scope.container;
+
+                        if (moveX) {
+                            if (layout === "col") {
+                                cm = container;
+                            } else {
+                                cm = container.attr("collections")[container.attr("activeIndex")];
+                            }
+
+                            delta = coords.x - startPos.x;
+                            move = Math.abs(delta) >= cm.attr("width") * 0.1;
+
+                            if ((cm.isHead() && delta > 0) || (cm.isTail() && delta < 0) || !move) {
+                                var e = angular.element(childrenElem[container.attr("activeIndex")]);
+                                Commons.slideX(e, 0, true);
+                                cm.slideReset();
+                            } else {
+                                delta > 0 ? container.slideRight() : container.slideLeft();
+                            }
+                        } else {
+                            if (layout === "col") {
+                                cm = container.attr("collections")[container.attr("activeIndex")];
+                            } else {
+                                cm = container;
+                            }
+
+                            delta = coords.y - startPos.y;
+                            move = Math.abs(delta) >= cm.attr("height") * 0.1;
+
+                            if ((cm.isHead() && delta > 0) || (cm.isTail() && delta < 0) || !move) {
+                                cm.slideReset();
+                            } else {
+                                delta < 0 ? container.slideUp() : container.slideDown();
+                            }
+                        }
+                    });
+
+                    startPos = null;
+                },
+
+                cancel: function () {
+                    // TODO: what are we going to do?
+                }
+            })
+        }
+
+        container.slideHome();
+
+        container.attr("ready", true);
+
+        scope.$emit("znPagesContainerReady", {
+            id: containerId
+        });
+    }
+
+    function collectionsReady(container) {
+        var collections = container.attr("collections"),
+            collectionCount = collections.length,
+            ready = true;
+
+        Commons.log(3, "++++++>>>>>> " + collectionCount);
+        for (var i = 0; i < collectionCount; i++) {
+            ready = ready && collections[i].isReady();
+        }
+
+        return ready;
+    }
+
+    return {
+        restrict: "A",
+        scope: true,
+        compile: function (element, attrs) {
+            Commons.log(2, {
                 "func": "znPages.compile",
                 "arguments": arguments
             });
 
-            var layout = attrs['znPages'] === "col" ? attrs['znPages'] : "row",
-                children = element.children(),
-                container = znPageManager.newContainer(),
-                containerId = container.getId();
-
-            element.addClass('zn-pages-container');
-
-            for (var i = 0; i < children.length; i++) {
-                var e = angular.element(children[i]),
-                    start = e.attr("zn-pages-start") ? e.attr("zn-pages-start") : 0,
-                    colElem = e.wrap('<div></div>').parent();
-
-                colElem.attr({
-                    'zn-pages-collection': "",
-                    'zn-pages-container-id': containerId,
-                    'zn-pages-layout': layout,
-                    'zn-pages-start': start
-                });
-
-                colElem.addClass("zn-pages-" + layout);
+            var tagName = element[0].tagName.toLowerCase();
+            if (tagName !== "div") {
+                Commons.log(1, "DIV, not " + tagName + ", must be used for containers.");
+                return;
             }
 
-            element.html('<div zn-id="' + containerId + '" class="zn-pages-' + layout + ' zn-noanimate">' + element.html() + '</div>');
+            var container = process(element, attrs),
+                containerId = container.getId();
 
             return function (scope, element, attrs) {
-                Commons.log(3, {
+                Commons.log(2, {
                     "func": "znPages.link",
-                    "arguments": arguments
+                    "arguments": arguments,
+                    "id": containerId
                 });
 
-                scope.container = container;
+                if (!container.isReady()) {
+                    scope.container = container;
+                    scope.name = containerId;
 
-                var start = typeof attrs['znPagesStart'] !== 'undefined' ? Math.max(0, parseInt(attrs['znPagesStart'])) : 0,
-                    containerElem = angular.element(element.children()[0]), // the newly added div container
-                    childrenElem = containerElem.children(),
-                    swipe = typeof attrs['znPagesSwipe'] !== 'undefined' ? true : false;
+                    // If this function is called during the "link" phase, and we don't already have a wrapper, then
+                    // create new wrapper. This wrapper is the outer layer used to hide the rest of the content
+                    var parent = element.parent()[0];
+                    if (parent.id !== "zn-pages-wrapper") {
+                        element.wrap('<div id="zn-pages-wrapper" class="zn-pages-container"></div>');
+                    }
 
-                container.attr({
-                    "width": containerElem[0].getBoundingClientRect().width,
-                    "height": containerElem[0].getBoundingClientRect().height,
-                    "layout": layout,
-                    "start": start,
-                    "activeIndex": start,
-                    "swipe": swipe
-                });
+                    var isNgInclude = container.attr("ngInclude"),
+                        compiles = container.attr("compiles"),
+                        collections = container.attr("collections");
 
-                Commons.slideTo(containerElem, container, false);
-
-                scope.$watch("container.hasMoved()", function(newValue, oldValue) {
                     Commons.log(3, {
-                        "func": "znPages.$watch container.hasMoved()",
-                        "arguments": arguments
+                        id: containerId,
+                        isNgInclude: isNgInclude,
+                        compiles: compiles
                     });
 
-                    if (newValue != undefined && newValue !== oldValue) {
-                        Commons.slideTo(containerElem, container, true);
-                        container.updateBuffer();
-                    }
-                });
+                    // If this is the first time after compilation, let's setup the event handlers
+                    if (compiles === 1) {
+                        Commons.log(3, ">>>>>>>>>>>> setting up $on znPagesCollectionReady");
 
-                if (swipe) {
-                    var startPos,            // coordinates of the last position
-                        moveX;               // moving horizontally (X) or vertically (!X)
-
-                    znSwipe.bind(containerElem, {
-                        start: function (coords) {
-                            startPos = coords;
-                            moveX = undefined;
-                        },
-
-                        move: function (coords) {
-                            if (!startPos) return;
-
-                            var pageManager = scope.pageManager;
-
-                            if (moveX === undefined) {
-                                var totalX = Math.abs(coords.x - startPos.x),
-                                    totalY = Math.abs(coords.y - startPos.y);
-                                moveX = (totalX > totalY);
-                            }
-
-                            var e, active, cm, childId, offset, ratio, newX, newY;
-
-                            if (moveX) {
-                                offset = coords.x - startPos.x;
-
-                                if (layout === "col") {
-                                    e = containerElem;
-                                    cm = container;
-                                } else {
-                                    cm = container.attr("collections")[container.attr("activeIndex")];
-                                    e = angular.element(childrenElem[container.attr("activeIndex")]);
-                                }
-
-                                ratio = ((cm.isHead() && offset > 0) || (cm.isTail() && offset < 0)) ? 3 : 1;
-                                newX = cm.getPosition(cm.attr("activeBufferIndex")).width + Math.round(offset / ratio);
-
-                                Commons.slideX(e, newX, false);
-                            } else {
-                                offset = coords.y - startPos.y;
-
-                                if (layout === "col") {
-                                    cm = container.attr("collections")[container.attr("activeIndex")];
-                                    e = angular.element(childrenElem[container.attr("activeIndex")]);
-                                } else {
-                                    e = containerElem;
-                                    cm = container;
-                                }
-
-                                active = cm.attr("activeBufferIndex");
-                                ratio = ((cm.isHead() && offset > 0) || (cm.isTail() && offset < 0)) ? 3 : 1;
-                                newY = cm.getPosition(cm.attr("activeBufferIndex")).height + Math.round(offset / ratio);
-
-                                Commons.slideY(e, newY, false);
-                            }
-                        },
-
-                        end: function (coords) {
-                            if (!startPos || moveX == undefined) return;
-
-                            scope.$apply(function () {
-                                var cm = null,
-                                    childId = null,
-                                    delta = 0,
-                                    move = false,
-                                    container = scope.container;
-
-                                if (moveX) {
-                                    if (layout === "col") {
-                                        cm = container;
-                                    } else {
-                                        cm = container.attr("collections")[container.attr("activeIndex")];
-                                    }
-
-                                    delta = coords.x - startPos.x;
-                                    move = Math.abs(delta) >= cm.attr("width") * 0.1;
-
-                                    if ((cm.isHead() && delta > 0) || (cm.isTail() && delta < 0) || !move) {
-                                        cm.slideReset();
-                                    } else {
-                                        delta > 0 ? container.slideRight() : container.slideLeft();
-                                    }
-                                } else {
-                                    if (layout === "col") {
-                                        cm = container.attr("collections")[container.attr("activeIndex")];
-                                    } else {
-                                        cm = container;
-                                    }
-
-                                    delta = coords.y - startPos.y;
-                                    move = Math.abs(delta) >= cm.attr("height") * 0.1;
-
-                                    if ((cm.isHead() && delta > 0) || (cm.isTail() && delta < 0) || !move) {
-                                        cm.slideReset();
-                                    } else {
-                                        delta < 0 ? container.slideUp() : container.slideDown();
-                                    }
-                                }
+                        scope.$on('znPagesCollectionReady', function (event) {
+                            Commons.log(2, {
+                                "func": "znPages.link.$on znPagesCollectionReady",
+                                "arguments": arguments,
+                                "id": containerId
                             });
 
-                            startPos = null;
-                        },
+                            if (collectionsReady(container)) {
+                                finalize(scope, element, attrs);
+                            }
+                        });
+                    }
 
-                        cancel: function () {
-                            // TODO: what are we going to do?
+                    if (isNgInclude) {
+                        if (compiles === 1) {
+                            scope.$on('$includeContentLoaded', function (event) {
+                                Commons.log(2, {
+                                    "func": "znPages.link.$on $includeContentLoaded",
+                                    "arguments": arguments,
+                                    "id": containerId
+                                });
+
+                                if (event.targetScope.name === containerId) process(scope, element, attrs);
+                            });
                         }
-                    })
+                    } else {
+                        Commons.log(2, {
+                            "func": "znPages.link.NOT_$includeContentLoaded",
+                            "arguments": arguments,
+                            "id": containerId
+                        });
+
+                        if (!collectionsReady(container)) {
+                            process(scope, element, attrs);
+                        } else {
+                            finalize(scope, element, attrs);
+                        }
+                    }
+
+                    Commons.log(3, ">>>>>>>>>>>>>>", container);
                 }
             }
         }
@@ -415,16 +936,23 @@ app.service("znPageManager", ['Commons', function (Commons) {
             id: id,                             // The page ID
             width: 0,                           // Page width
             height: 0,                          // Page height
-            parent: null                        // The collection holding this page
+            parent: null,                       // The collection holding this page
+            ready: false,
+            compiles: 0
         };
 
         angular.extend(this, _options);
     }
 
     Page.prototype.attr = Commons.attr;
+    Page.prototype.toString = Commons.toString;
 
     Page.prototype.getId = function () {
         return "zn-pages-page-" + this.id;
+    };
+
+    Page.prototype.isReady = function () {
+        return this.ready;
     };
 
     /**
@@ -451,7 +979,10 @@ app.service("znPageManager", ['Commons', function (Commons) {
             height: 0,
             width: 0,
             layout: "row",
-            reset: false
+            restart: false,
+            ready: false,
+            startIndex: 0,
+            compiles: 0
         };
 
         for (var i in _options) this[i] = _options[i];
@@ -459,6 +990,7 @@ app.service("znPageManager", ['Commons', function (Commons) {
     }
 
     Collection.prototype.attr = Commons.attr;
+    Collection.prototype.toString = Commons.toString;
 
     Collection.prototype.newPage = function () {
         var page = new Page(this.id + "-" + this.pages.length);
@@ -470,8 +1002,27 @@ app.service("znPageManager", ['Commons', function (Commons) {
         return "zn-pages-collection-" + this.id;
     };
 
+    Collection.prototype.page = function (id) {
+        for (var i = 0; i < this.pages.length; i++) {
+            if (this.pages[i].getId() === id) {
+                return this.pages[i];
+            }
+        }
+    };
+
     Collection.prototype.isDynamic = function () {
         return this.dynamic;
+    };
+
+    Collection.prototype.isReady = function () {
+        var count = this.pages.length,
+            ready = this.ready;
+
+        for (var i = 0; i < count; i++) {
+            ready = ready && this.pages[i].isReady();
+        }
+
+        return ready;
     };
 
     Collection.prototype.isHead = function () {
@@ -479,7 +1030,7 @@ app.service("znPageManager", ['Commons', function (Commons) {
     };
 
     Collection.prototype.isTail = function () {
-        return this.activeIndex === this.length()-1;
+        return this.activeIndex === this.length() - 1;
     };
 
     Collection.prototype.getBuffer = function () {
@@ -494,58 +1045,63 @@ app.service("znPageManager", ['Commons', function (Commons) {
         return this.isDynamic() ? this.collection.length : this.pages.length;
     };
 
-    Collection.prototype.getPosition = function(index) {
+    Collection.prototype.getPosition = function (index) {
         var position = { width: 0, height: 0 };
 
-        if (this.isDynamic()) {
-            position.width = -this.width * index;
-            position.height = -this.height * index;
-        } else {
-            for (var i = 0; i < index; i++) {
-                position.width -= this.pages[i].attr("width");
-                position.height -= this.pages[i].attr("height");
-            }
+        var width = this.parent.attr("width"),
+            height = this.parent.attr("height");
 
-        }
+        position.width = -width * index;
+        position.height = -height * index;
+
+        Commons.log(3, {
+            "func": "Collection.getPosition",
+            "parentWidth": width,
+            "parentHeight": height,
+            "width": position.width,
+            "height": position.height
+        })
 
         return position;
     };
 
-    Collection.prototype.hasMoved = function() {
+    Collection.prototype.hasMoved = function () {
         return this.moved;
     };
 
-    Collection.prototype.slideReset = function() {
+    Collection.prototype.slideReset = function () {
         this.moved++;
     };
 
-    Collection.prototype.slidePrev = function() {
+    Collection.prototype.slidePrev = function () {
         this.numMoved = -1;
         this.moved++;
     };
 
-    Collection.prototype.slideNext = function() {
+    Collection.prototype.slideNext = function () {
         this.numMoved = 1;
         this.moved++;
     };
 
-    Collection.prototype.slideHome = function() {
+    Collection.prototype.slideHome = function () {
         this.numMoved = 0;
         this.activeIndex = this.startIndex;
         this.activeBufferIndex = this.startIndex;
-        this.buffer = [];
-        this.reset = true;
+        this.restart = true;
+
+        this.updateBuffer();
+
         this.moved++;
     };
 
     Collection.prototype.updateBuffer = function (collection) {
-        Commons.log(3, {
+        Commons.log(2, {
             "func": "Collection.updateBuffer",
             "arguments": arguments
         });
 
         if (!this.isDynamic()) {
-            var active = Math.max(0, Math.min(this.activeIndex+this.numMoved, this.pages.length-1));
+            var active = Math.max(0, Math.min(this.activeIndex + this.numMoved, this.pages.length - 1));
             this.activeIndex = active;
             this.activeBufferIndex = active;
             return;
@@ -656,15 +1212,18 @@ app.service("znPageManager", ['Commons', function (Commons) {
             height: 0,
             width: 0,
             layout: "row",
-            swipe: true,
+            isSwipe: true,
             startIndex: 0,
-            reset: false
+            restart: false,
+            ready: false,
+            compiles: 0
         };
 
         angular.extend(this, _options);
     }
 
     Container.prototype.attr = Commons.attr;
+    Container.prototype.toString = Commons.toString;
 
     Container.prototype.newCollection = function () {
         var col = new Collection(this.id + "-" + this.collections.length);
@@ -676,12 +1235,29 @@ app.service("znPageManager", ['Commons', function (Commons) {
         return "zn-pages-container-" + this.id;
     };
 
+    Container.prototype.isReady = function () {
+        var count = this.collections.length,
+            ready = this.ready;
+
+        for (var i = 0; i < count; i++) {
+            ready = ready && this.collections[i].isReady();
+        }
+
+        Commons.log(3, {
+            id: this.id,
+            count: count,
+            ready: ready
+        });
+
+        return ready;
+    };
+
     Container.prototype.isHead = function () {
         return this.activeIndex === 0;
     };
 
     Container.prototype.isTail = function () {
-        return this.activeIndex === this.length()-1;
+        return this.activeIndex === this.length() - 1;
     };
 
     Container.prototype.isLeft = function () {
@@ -728,33 +1304,44 @@ app.service("znPageManager", ['Commons', function (Commons) {
         }
     };
 
-    Container.prototype.bufferLength = function() {
+    Container.prototype.bufferLength = function () {
         return this.length();
     };
 
-    Container.prototype.hasMoved = function() {
+    Container.prototype.hasMoved = function () {
         return this.moved;
     };
 
-    Container.prototype.getPosition = function(index) {
+    Container.prototype.getPosition = function (index) {
         var position = { width: 0, height: 0 };
 
-        for (var i = 0; i < index; i++) {
-            position.width -= this.collections[i].attr("width");
-            position.height -= this.collections[i].attr("height");
-        }
+        position.width = -this.width * index;
+        position.height = -this.height * index;
+
+        Commons.log(3, {
+            "func": "Container.getPosition",
+            "width": position.width,
+            "height": position.height
+        });
 
         return position;
     };
 
-    Container.prototype.slideReset = function() {
+    Container.prototype.slideReset = function () {
         this.moved++;
     };
 
-    Container.prototype.slideHome = function() {
+    Container.prototype.slideHome = function () {
+        Commons.log(2, {
+            "func": "Container.slideHome"
+        });
+
         this.numMoved = 0;
         this.activeIndex = this.startIndex;
         this.activeBufferIndex = this.startIndex;
+        this.restart = true;
+
+        this.updateBuffer();
 
         for (var i = 0; i < this.length(); i++) {
             this.collections[i].slideHome();
@@ -763,24 +1350,24 @@ app.service("znPageManager", ['Commons', function (Commons) {
         this.moved++;
     };
 
-    Container.prototype.slidePrev = function() {
+    Container.prototype.slidePrev = function () {
         this.numMoved = -1;
         this.moved++;
     };
 
-    Container.prototype.slideNext = function() {
+    Container.prototype.slideNext = function () {
         this.numMoved = 1;
         this.moved++;
     };
 
     Container.prototype.updateBuffer = function () {
-        var active = Math.max(0, Math.min(this.activeIndex+this.numMoved, this.collections.length-1));
+        var active = Math.max(0, Math.min(this.activeIndex + this.numMoved, this.collections.length - 1));
         this.activeIndex = active;
         this.activeBufferIndex = active;
     };
 
-    Container.prototype.slideLeft = function() {
-        Commons.log(3, {
+    Container.prototype.slideLeft = function () {
+        Commons.log(2, {
             "func": "Container.slideLeft",
             "arguments": arguments
         });
@@ -794,8 +1381,8 @@ app.service("znPageManager", ['Commons', function (Commons) {
         }
     };
 
-    Container.prototype.slideRight = function() {
-        Commons.log(3, {
+    Container.prototype.slideRight = function () {
+        Commons.log(2, {
             "func": "Container.slideRight",
             "arguments": arguments
         });
@@ -809,8 +1396,8 @@ app.service("znPageManager", ['Commons', function (Commons) {
         }
     };
 
-    Container.prototype.slideUp = function() {
-        Commons.log(3, {
+    Container.prototype.slideUp = function () {
+        Commons.log(2, {
             "func": "Container.slideUp",
             "arguments": arguments
         });
@@ -824,8 +1411,8 @@ app.service("znPageManager", ['Commons', function (Commons) {
         }
     };
 
-    Container.prototype.slideDown = function() {
-        Commons.log(3, {
+    Container.prototype.slideDown = function () {
+        Commons.log(2, {
             "func": "Container.slideDown",
             "arguments": arguments
         });
@@ -837,6 +1424,14 @@ app.service("znPageManager", ['Commons', function (Commons) {
         } else {
             this.slidePrev();
         }
+    };
+
+    Container.prototype.initialize = function (options) {
+        this.attr(options);
+
+        var active = Math.max(0, Math.min(this.activeIndex + this.numMoved, this.collections.length - 1));
+        this.activeIndex = active;
+        this.activeBufferIndex = active;
     };
 
     return {
@@ -851,7 +1446,7 @@ app.service("znPageManager", ['Commons', function (Commons) {
         },
 
         container: function (id) {
-            Commons.log(3, {
+            Commons.log(2, {
                 "func": "znPageManager.container",
                 "arguments": arguments
             });
@@ -865,13 +1460,13 @@ app.service("znPageManager", ['Commons', function (Commons) {
     };
 }]);
 
-app.factory("Commons", [ function() {
+app.factory("Commons", [ function () {
     return {
         log: function () {
             var debug = true,
                 debug2 = true,
-                debug3 = false,
-                d = arguments[0],
+                debug3 = true,
+                d = parseInt(arguments[0]),
                 i;
 
             if ((d === 1 && debug) || (d === 2 && debug2) || (d === 3 && debug3)) {
@@ -879,16 +1474,11 @@ app.factory("Commons", [ function() {
                 for (i = 1; i < arguments.length; i++) {
                     console.log(arguments[i]);
                 }
-            } else if (debug3) {
-                console.log(new Date());
-                for (i = 0; i < arguments.length; i++) {
-                    console.log(arguments[i]);
-                }
             }
         },
 
         attr: function (name, value) {
-           if (angular.isObject(name)) {
+            if (angular.isObject(name)) {
                 // if the name is a object map, then loop through the properties and set them individually
                 for (var i in name) {
                     if (name.hasOwnProperty(i)) this.attr(i, name[i]);
@@ -899,10 +1489,22 @@ app.factory("Commons", [ function() {
                 // Otherwise we just save the properties
                 this[name] = value;
             } else if (name !== undefined) {
-                // if name is defined and value is undefined, then we assume we are retrieving
-                // a parameter, so that's what we will do
+                // if name is defined and value is undefined, then we assume we are retrieving a parameter
+
+                // If it's a collection that is NOT dynamic, or it's a container (which by definition is not
+                // dynamic, then activeBufferIndex is really just the activeIndex, so we will return that
                 if (((this.getId().match(/^zn-pages-collection/) && !this.isDynamic()) || this.getId().match(/^zn-pages-container/)) && name === "activeBufferIndex") {
                     return this.activeIndex;
+                }
+
+                if (name === "activeIndex") {
+                    if (this.getId().match(/^zn-pages-container/)) {
+                        return Math.max(0, Math.min(this.activeIndex, this.collections.length));
+                    } else if (this.getId().match(/^zn-pages-conllection/)) {
+                        return Math.max(0, Math.min(this.activeIndex, this.pages.length));
+                    } else {
+                        return this.activeIndex;
+                    }
                 }
                 return this[name];
             } else {
@@ -911,8 +1513,21 @@ app.factory("Commons", [ function() {
             }
         },
 
-        slideTo: function(element, obj, animate) {
-            this.log(3, {
+        toString: function () {
+            var str = "id: " + this.getId() + "\n";
+
+            for (var i in this) {
+                var t = typeof this[i];
+                if (t !== 'function') {
+                    str += (i + " (" + t + "): " + (this[i] !== null ? this[i].toString() : "null") + "\n");
+                }
+            }
+
+            return str;
+        },
+
+        slideTo: function (element, obj, animate) {
+            this.log(2, {
                 "func": "Commons.slideTo",
                 "arguments": arguments
             });
@@ -921,8 +1536,10 @@ app.factory("Commons", [ function() {
 
             var id = obj.getId(),
                 layout = obj.attr("layout"),
-                active = Math.max(0, Math.min(obj.attr("activeBufferIndex")+obj.attr("numMoved"), obj.bufferLength()-1)),
+                active = Math.max(0, Math.min(obj.attr("activeBufferIndex") + obj.attr("numMoved"), obj.bufferLength() - 1)),
                 position = obj.getPosition(active);
+
+            this.log(3, position);
 
             if (id.match(/^zn-pages-container/)) {
                 // slide container
@@ -944,9 +1561,11 @@ app.factory("Commons", [ function() {
         },
 
         slideX: function (element, width, animate) {
-            this.log(3, {
+            this.log(2, {
                 "func": "Commons.slideX",
-                "arguments": arguments
+                "arguments": arguments,
+                "width": width,
+                "animate": animate
             });
 
             if (animate === false) {
@@ -959,9 +1578,11 @@ app.factory("Commons", [ function() {
         },
 
         slideY: function (element, height, animate) {
-            this.log(3, {
+            this.log(2, {
                 "func": "Commons.slideY",
-                "arguments": arguments
+                "arguments": arguments,
+                "height": height,
+                "animate": animate
             });
 
             if (animate === false) {
@@ -974,7 +1595,7 @@ app.factory("Commons", [ function() {
         },
 
         whichTransitionEvent: function () {
-            this.log(3, {
+            this.log(2, {
                 "func": "Commons.whichTransitionEvent",
                 "arguments": arguments
             });
@@ -998,7 +1619,7 @@ app.factory("Commons", [ function() {
         },
 
         whichTransformCSS: function () {
-            this.log(3, {
+            this.log(2, {
                 "func": "Commons.whichTransformCSS",
                 "arguments": arguments
             });
