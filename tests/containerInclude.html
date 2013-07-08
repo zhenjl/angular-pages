@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Angular-Pages Pages Demo</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width"/>
+    <link href='../src/angular-pages.css' rel='stylesheet' type='text/css'>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            height: 100%;
+            width: 100%;
+            font-family: calibri, sans-serif;
+            font-size: 62.5%;
+            font-weight: normal;
+        }
+
+        body {
+            font-size: 2rem;
+        }
+
+        h1 {
+            font-size: 3.6rem;
+            font-weight: normal;
+        }
+
+        h2 {
+            font-size: 2.8rem;
+            font-weight: normal;
+        }
+
+        .zn-pages-container2 {
+            height: 20rem;
+            width: 20rem;
+            top: 20rem;
+            left: 20rem;
+            position: absolute;
+        }
+
+        .zn-pages-container {
+            height: 100%;
+            width: 100%;
+            top: 0;
+            left: 0;
+            position: absolute;
+            color: white;
+        }
+
+        div.nav {
+            background-color: white;
+            opacity: 0.5;
+            width: 9rem;
+            height: 9rem;
+            bottom: 1rem;
+            right: 1rem;
+            position: absolute;
+            z-index: 10;
+            padding: 0;
+            margin: 0;
+            -webkit-border-radius: 50%;
+            -moz-border-radius: 50%;
+            border-radius: 50%;
+        }
+
+        div.nav > ul {
+            top: 0;
+            left: 0;
+            padding: 0;
+            margin: 0;
+        }
+
+        div.nav > ul > li, div.nav > ul > li > img {
+            float: left;
+            font-size: 0;
+            width: 3rem;
+            height: 3rem;
+            margin: 0;
+            padding: 0;
+        }
+
+        ul.toc {
+            list-style: disc outside;
+            line-height: 120%;
+        }
+
+        ul.toc > li {
+            font-size: 1.8rem;
+        }
+
+        a {
+            color: white;
+        }
+
+        div.content {
+            width: 60%;
+            line-height: 150%;
+            margin: 0 auto;
+            padding: 0;
+            top: 2.5rem;
+            box-sizing: border-box;
+            font-size: 2rem;
+            position: relative;
+        }
+    </style>
+</head>
+
+<body ng-app="pagesDemo" ng-controller="pagesDemoController" ng-cloak>
+<div class="control nav" style="background-color: white; opacity: 0.5; width: 90px;">
+    <ul>
+        <li></li>
+        <li>
+            <img src="../demo/img/arrow_up.svg" ng-click="slideDown()" ng-hide="container.isTop()"/>
+        </li>
+        <li></li>
+        <li>
+            <img src="../demo/img/arrow_left.svg" ng-click="slideRight()" ng-hide="container.isLeft()"/>
+        </li>
+        <li>
+            <img src="../demo/img/home.svg" ng-click="slideHome()" />
+        </li>
+        <li>
+            <img src="../demo/img/arrow_right.svg" ng-click="slideLeft()" ng-hide="container.isRight()"/>
+        </li>
+        <li></li>
+        <li>
+            <img src="../demo/img/arrow_down.svg" ng-click="slideUp()" ng-hide="container.isBottom()"/>
+        </li>
+        <li></li>
+    </ul>
+</div>
+
+<div zn-pages zn-pages-start="0" zn-pages-swipe ng-include src="'containerInclude.inc.html'">
+</div>
+
+<script src="../lib/angular-1.1.5.min.js"></script>
+<script src="../src/angular-pages.js"></script>
+
+<script>
+    var app = angular.module("pagesDemo", ['angular-pages']);
+
+    app.controller("pagesDemoController", ['colors', '$scope', '$timeout',
+        'znPageManager', 'Commons', function(colors, $scope, $timeout, znPageManager, Commons) {
+            $scope.colors = colors.colors;
+            var container = znPageManager.container('zn-pages-container-0');
+            $scope.container = container;
+
+            $scope.addColor = function() {
+                colors.addColor("#27ae60");
+            };
+
+            $scope.shiftColor = function() {
+                colors.shiftColor();
+            };
+
+            $scope.rotateColor = function() {
+                colors.addColor(colors.shiftColor());
+            };
+
+            $scope.prependColor = function() {
+                colors.prependColor("#27ae60");
+            };
+
+            $scope.slideLeft = function() {
+                container.slideLeft();
+            };
+
+            $scope.slideRight = function() {
+                container.slideRight();
+            };
+
+            $scope.slideDown = function() {
+                container.slideDown();
+            };
+
+            $scope.slideUp = function() {
+                container.slideUp();
+            };
+
+            $scope.slideHome = function() {
+                container.slideHome();
+            };
+
+            console.log(container);
+        }]);
+
+    app.factory('colors', function() {
+        var colorsList = ['#1abc9c', '#f1c40f', '#d35400', '#2c3e50', '#8e44ad'];
+        return {
+            colors: colorsList,
+            prependColor: function(color) {
+                colorsList.unshift(color);
+            },
+            addColor: function(color) {
+                colorsList.push(color);
+            },
+            shiftColor: function() {
+                return colorsList.shift();
+            }
+        }
+    });
+</script>
+</body>
+</html>

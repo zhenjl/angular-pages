@@ -12,11 +12,6 @@ var app = angular.module("angular-pages", []);
 app.directive("znPagesPage", ['znPageManager', 'Commons', function (znPageManager, Commons) {
 
     function process() {
-        Commons.log(2, {
-            "func": "znPagesPage.process",
-            "arguments": arguments
-        });
-
         var scope, element, attrs, phase;
 
         if (arguments.length === 3) {
@@ -34,13 +29,6 @@ app.directive("znPagesPage", ['znPageManager', 'Commons', function (znPageManage
             containerId = attrs.znPagesContainerId || undefined,
             collectionId = attrs.znPagesCollectionId || undefined,
             isNgInclude = typeof attrs.ngInclude !== 'undefined';
-
-        Commons.log(3, {
-            id: id,
-            containerId: containerId,
-            collectionId: collectionId,
-            isNgInclude: isNgInclude
-        });
 
         if (containerId === undefined || collectionId === undefined) return;
 
@@ -67,13 +55,6 @@ app.directive("znPagesPage", ['znPageManager', 'Commons', function (znPageManage
             "parent": collection
         });
 
-        Commons.log(3, {
-            id: id,
-            "compiles": collection.attr("compiles"),
-            isNgInclude: isNgInclude,
-            parent: collection
-        });
-
         element.attr('id', id);
         attrs['id'] = id;
 
@@ -81,12 +62,6 @@ app.directive("znPagesPage", ['znPageManager', 'Commons', function (znPageManage
     }
 
     function finalize(scope, element, attrs) {
-        Commons.log(2, {
-            "func": "znPagesPage.finalize",
-            "arguments": arguments,
-            "id": pageId
-        });
-
         var page = scope.page,
             pageId = page.getId(),
             width = element[0].offsetWidth,
@@ -95,13 +70,6 @@ app.directive("znPagesPage", ['znPageManager', 'Commons', function (znPageManage
         if (page.isReady()) return;
 
         page.attr({
-            "width": width,
-            "height": height,
-            "ready": true
-        });
-
-        Commons.log(3, {
-            id: pageId,
             "width": width,
             "height": height,
             "ready": true
@@ -116,11 +84,6 @@ app.directive("znPagesPage", ['znPageManager', 'Commons', function (znPageManage
         restrict: "A",
         scope: true,
         compile: function (element, attrs) {
-            Commons.log(2, {
-                "func": "znPagesPage.compile",
-                "arguments": arguments
-            });
-
             var tagName = element[0].tagName.toLowerCase();
             if (tagName !== "li") {
                 Commons.log(1, "LI, not " + tagName + ", must be used for collections.");
@@ -131,12 +94,6 @@ app.directive("znPagesPage", ['znPageManager', 'Commons', function (znPageManage
                 pageId = page.getId();
 
             return function (scope, element, attrs) {
-                Commons.log(2, {
-                    "func": "znPagesPage.link",
-                    "arguments": arguments,
-                    "id": pageId
-                });
-
                 if (!page.isReady()) {
                     scope.page = page;
                     scope.name = pageId;
@@ -146,24 +103,12 @@ app.directive("znPagesPage", ['znPageManager', 'Commons', function (znPageManage
 
                     if (isNgInclude) {
                         scope.$on('$includeContentLoaded', function (event) {
-                            Commons.log(2, {
-                                "func": "znPagesPage.link.$on $includeContentLoaded",
-                                "arguments": arguments,
-                                "id": pageId
-                            });
-
                             if (event.targetScope.name === pageId) {
                                 process(scope, element, attrs);
                                 finalize(scope, element, attrs);
                             }
                         });
                     } else {
-                        Commons.log(2, {
-                            "func": "znPagesPage.link.NOT_$includeContentLoaded",
-                            "arguments": arguments,
-                            "id": pageId
-                        });
-
                         // For the page, if it's not ng-include, then we just go ahead and finalize
                         // Unlike collection and container, for those, if the element is not ng-include,
                         // their children may.
@@ -179,11 +124,6 @@ app.directive("znPagesPage", ['znPageManager', 'Commons', function (znPageManage
 app.directive("znPagesCollection", ['$compile', 'znPageManager', 'Commons', function ($compile, znPageManager, Commons) {
 
     function process() {
-        Commons.log(2, {
-            "func": "znPagesCollection.process",
-            "arguments": arguments
-        });
-
         var scope, element, attrs, phase;
 
         if (arguments.length === 3) {
@@ -204,15 +144,6 @@ app.directive("znPagesCollection", ['$compile', 'znPageManager', 'Commons', func
             isNgInclude = typeof attrs.ngInclude !== 'undefined',
             collection, container, ngRepeatCollection,
             dynamic = false;
-
-        Commons.log(3, {
-            id: id,
-            layout: layout,
-            containerId: containerId,
-            start: start,
-            isNgInclude: isNgInclude,
-            dynamic: dynamic
-        });
 
         if (containerId === undefined) return;
 
@@ -242,7 +173,6 @@ app.directive("znPagesCollection", ['$compile', 'znPageManager', 'Commons', func
 
         element.removeClass("zn-animate").addClass("zn-noanimate");
 
-        Commons.log(3, element[0].innerHTML);
         // If it's not ng-include, then let's check to see if this is ng-repeat
         //if (!isNgInclude) {
                 // Get the page elements (LIs)
@@ -253,8 +183,6 @@ app.directive("znPagesCollection", ['$compile', 'znPageManager', 'Commons', func
 
                 // Get the ng-repeat expression
                 expression = ngRepeatElem.attr('ng-repeat');
-
-            Commons.log(3, "---------------- ", expression, ngRepeatElem);
 
             // If this is ng-repeat, then extract the collection name in the expression, and replace
             // it with our own.
@@ -280,18 +208,6 @@ app.directive("znPagesCollection", ['$compile', 'znPageManager', 'Commons', func
             "collectionName": ngRepeatCollection
         });
 
-        Commons.log(3, {
-            "id": id,
-            "compiles": collection.attr("compiles"),
-            "layout": layout,
-            "startIndex": start,
-            "activeIndex": start,
-            "parent": container,
-            "dynamic": dynamic,
-            "ngInclude": isNgInclude,
-            "collectionName": ngRepeatCollection
-        });
-
         if (!ngRepeatCollection) {
             var children = element.children(),
                 childrenCount = children.length;
@@ -308,19 +224,12 @@ app.directive("znPagesCollection", ['$compile', 'znPageManager', 'Commons', func
                 // Only run compile explicitly if in link phase
                 if (phase === "link") $compile(child)(scope);
             }
-        } else if (isNgInclude && ngRepeatCollection) {
-            Commons.log(3, "++++++++++++++ DING DING DING" + ngRepeatCollection);
         }
 
         return collection;
     }
 
     function finalize(scope, element, attrs) {
-        Commons.log(2, {
-            "func": "znPagesCollection.finalize",
-            "arguments": arguments
-        });
-
         var width = element[0].offsetWidth,
             height = element[0].offsetHeight,
             collection = scope.collection,
@@ -335,14 +244,6 @@ app.directive("znPagesCollection", ['$compile', 'znPageManager', 'Commons', func
             "height": height
         });
 
-        Commons.log(2, {
-            id: id,
-            layout: layout,
-            compiles: compiles,
-            width: width,
-            height: height
-        });
-
         if (collection.isDynamic()) {
 
             collection.updateBuffer(scope.$eval(collection.attr("collectionName")));
@@ -351,18 +252,7 @@ app.directive("znPagesCollection", ['$compile', 'znPageManager', 'Commons', func
             collection.updateBuffer();
         }
 
-        Commons.log(3, {
-            "func": "znPagesCollection.finalize.scopeFinalized",
-            id: id,
-        });
-
         scope.$watch("collection.hasMoved()", function (moved) {
-            Commons.log(2, {
-                "func": "znPagesCollection.$watch collection.hasMoved()",
-                "arguments": arguments,
-                "id": id
-            });
-
             if (moved !== undefined) {
                 var animate = !collection.attr("restart");
                 Commons.slideTo(element, collection, animate);
@@ -372,10 +262,6 @@ app.directive("znPagesCollection", ['$compile', 'znPageManager', 'Commons', func
         });
 
         collection.attr("ready", true);
-
-        Commons.log(3, "++++++++++ emit ready", {
-            id: id
-        });
 
         scope.$emit("znPagesCollectionReady", {
             id: id
@@ -398,11 +284,6 @@ app.directive("znPagesCollection", ['$compile', 'znPageManager', 'Commons', func
         restrict: "A",
         scope: true,
         compile: function (element, attrs) {
-            Commons.log(2, {
-                "func": "znPagesCollection.compile",
-                "arguments": arguments
-            });
-
             var tagName = element[0].tagName.toLowerCase();
             if (tagName !== "ul") {
                 Commons.log(1, "UL, not " + tagName + ", must be used for collections.");
@@ -413,12 +294,6 @@ app.directive("znPagesCollection", ['$compile', 'znPageManager', 'Commons', func
                 collectionId = collection.getId();
 
             return function (scope, element, attrs) {
-                Commons.log(2, {
-                    "func": "znPagesCollection.link",
-                    "arguments": arguments,
-                    "id": collectionId
-                });
-
                 if (!collection.isReady()) {
                     scope.collection = collection;
                     scope.name = collectionId;
@@ -431,12 +306,6 @@ app.directive("znPagesCollection", ['$compile', 'znPageManager', 'Commons', func
 
                     if (!dynamic) {
                         scope.$on('znPagesPageReady', function (event) {
-                            Commons.log(2, {
-                                "func": "znPagesCollection.link.$on znPagesPageReady",
-                                "arguments": arguments,
-                                "id": collectionId
-                            });
-
                             if (pagesReady(collection)) {
                                 finalize(scope, element, attrs);
                             }
@@ -448,12 +317,6 @@ app.directive("znPagesCollection", ['$compile', 'znPageManager', 'Commons', func
                             // if dynamic then it means this is a ng-repeat element, in which case
                             // we make sure we watch for any changes
                             scope.$watch(collectionName, function (newValue, oldValue) {
-                                Commons.log(2, {
-                                    "func": "znPagesCollection.link.$watch " + collectionName,
-                                    "arguments": arguments,
-                                    "id": collectionId
-                                });
-
                                 if (newValue != undefined && !angular.equals(newValue, oldValue)) {
                                     collection.updateBuffer(newValue);
                                     scope.znPagesBuffer = collection.getBuffer();
@@ -476,22 +339,10 @@ app.directive("znPagesCollection", ['$compile', 'znPageManager', 'Commons', func
                     if (isNgInclude) {
                         if (compiles === 1) {
                             scope.$on('$includeContentLoaded', function (event) {
-                                Commons.log(2, {
-                                    "func": "znPagesCollection.link.$includeContentLoaded",
-                                    "arguments": arguments,
-                                    "id": collectionId
-                                });
-
                                 if (event.targetScope.name === collectionId) process(scope, element, attrs);
                             });
                         }
                     } else {
-                        Commons.log(2, {
-                            "func": "znPagesCollection.link.NOT_$includeContentIncluded",
-                            "arguments": arguments,
-                            "id": collectionId
-                        });
-
                         if (!pagesReady(collection)) {
                             process(scope, element, attrs);
                         } else {
@@ -505,12 +356,6 @@ app.directive("znPagesCollection", ['$compile', 'znPageManager', 'Commons', func
                         element[0].addEventListener(Commons.whichTransitionEvent(), function (event) {
                             if (event.target.getAttribute('id').match(/^zn-pages-collection/)) {
                                 scope.$apply(function () {
-                                    Commons.log(2, {
-                                        "func": "znPagesCollection.link.addEventListener transitionEnd",
-                                        "arguments": arguments,
-                                        "id": collectionId
-                                    });
-
                                     var collection = scope.collection,
                                         numMoved = collection.attr("numMoved");
 
@@ -543,11 +388,6 @@ app.directive("znPagesCollection", ['$compile', 'znPageManager', 'Commons', func
 app.directive("znPages", ['$compile', "znSwipe", 'znPageManager', 'Commons', function ($compile, znSwipe, znPageManager, Commons) {
 
     function process() {
-        Commons.log(2, {
-            "func": "znPages.process",
-            "arguments": arguments
-        });
-
         var scope, element, attrs, phase;
 
         if (arguments.length === 3) {
@@ -598,15 +438,6 @@ app.directive("znPages", ['$compile', "znSwipe", 'znPageManager', 'Commons', fun
             "zn-pages-start": start
         });
 
-        Commons.log(3, {
-            id: id,
-            compiles: container.attr("compiles"),
-            layout: layout,
-            start: start,
-            isSwipe: isSwipe,
-            isNgInclude: isNgInclude
-        });
-
         var children = element.children(),
             childrenCount = children.length;
 
@@ -624,13 +455,6 @@ app.directive("znPages", ['$compile', "znSwipe", 'znPageManager', 'Commons', fun
                 'zn-pages-start': childStart
             });
 
-            Commons.log(3, "********** modifying child " + i, {
-                'zn-pages-collection': "",
-                'zn-pages-container-id': id,
-                'zn-pages-layout': layout,
-                'zn-pages-start': childStart
-            });
-
             child.addClass("zn-pages-" + layout);
 
             // Call $compile if this is the link phase. Otherwise it means we are in the compile phase,
@@ -642,11 +466,6 @@ app.directive("znPages", ['$compile', "znSwipe", 'znPageManager', 'Commons', fun
     }
 
     function finalize(scope, element, attrs) {
-        Commons.log(2, {
-            "func": "znPages.finalize",
-            "arguments": arguments
-        });
-
         var container = scope.container,
             containerId = container.getId(),
             childrenElem = element.children(),
@@ -663,24 +482,9 @@ app.directive("znPages", ['$compile', "znSwipe", 'znPageManager', 'Commons', fun
             "height": height
         });
 
-        Commons.log(3, {
-            id: containerId,
-            layout: layout,
-            isSwipe: isSwipe,
-            compiles: compiles,
-            width: width,
-            height: height
-        });
-
         container.updateBuffer();
 
         scope.$watch("container.hasMoved()", function (newValue, oldValue) {
-            Commons.log(2, {
-                "func": "znPages.finalize.$watch container.hasMoved()",
-                "arguments": arguments,
-                "id": containerId
-            });
-
             if (newValue != undefined && newValue !== oldValue) {
                 var animate = !container.attr("restart");
                 Commons.slideTo(element, container, animate);
@@ -690,11 +494,6 @@ app.directive("znPages", ['$compile', "znSwipe", 'znPageManager', 'Commons', fun
         });
 
         if (isSwipe) {
-            Commons.log(2, {
-                "func": "znPages.finalize.isSwipe",
-                "id": containerId
-            });
-
             var startPos,            // coordinates of the last position
                 moveX;               // moving horizontally (X) or vertically (!X)
 
@@ -816,7 +615,6 @@ app.directive("znPages", ['$compile', "znSwipe", 'znPageManager', 'Commons', fun
             collectionCount = collections.length,
             ready = true;
 
-        Commons.log(3, "++++++>>>>>> " + collectionCount);
         for (var i = 0; i < collectionCount; i++) {
             ready = ready && collections[i].isReady();
         }
@@ -828,11 +626,6 @@ app.directive("znPages", ['$compile', "znSwipe", 'znPageManager', 'Commons', fun
         restrict: "A",
         scope: true,
         compile: function (element, attrs) {
-            Commons.log(2, {
-                "func": "znPages.compile",
-                "arguments": arguments
-            });
-
             var tagName = element[0].tagName.toLowerCase();
             if (tagName !== "div") {
                 Commons.log(1, "DIV, not " + tagName + ", must be used for containers.");
@@ -843,12 +636,6 @@ app.directive("znPages", ['$compile', "znSwipe", 'znPageManager', 'Commons', fun
                 containerId = container.getId();
 
             return function (scope, element, attrs) {
-                Commons.log(2, {
-                    "func": "znPages.link",
-                    "arguments": arguments,
-                    "id": containerId
-                });
-
                 if (!container.isReady()) {
                     scope.container = container;
                     scope.name = containerId;
@@ -864,23 +651,9 @@ app.directive("znPages", ['$compile', "znSwipe", 'znPageManager', 'Commons', fun
                         compiles = container.attr("compiles"),
                         collections = container.attr("collections");
 
-                    Commons.log(3, {
-                        id: containerId,
-                        isNgInclude: isNgInclude,
-                        compiles: compiles
-                    });
-
                     // If this is the first time after compilation, let's setup the event handlers
                     if (compiles === 1) {
-                        Commons.log(3, ">>>>>>>>>>>> setting up $on znPagesCollectionReady");
-
                         scope.$on('znPagesCollectionReady', function (event) {
-                            Commons.log(2, {
-                                "func": "znPages.link.$on znPagesCollectionReady",
-                                "arguments": arguments,
-                                "id": containerId
-                            });
-
                             if (collectionsReady(container)) {
                                 finalize(scope, element, attrs);
                             }
@@ -890,30 +663,16 @@ app.directive("znPages", ['$compile', "znSwipe", 'znPageManager', 'Commons', fun
                     if (isNgInclude) {
                         if (compiles === 1) {
                             scope.$on('$includeContentLoaded', function (event) {
-                                Commons.log(2, {
-                                    "func": "znPages.link.$on $includeContentLoaded",
-                                    "arguments": arguments,
-                                    "id": containerId
-                                });
-
                                 if (event.targetScope.name === containerId) process(scope, element, attrs);
                             });
                         }
                     } else {
-                        Commons.log(2, {
-                            "func": "znPages.link.NOT_$includeContentLoaded",
-                            "arguments": arguments,
-                            "id": containerId
-                        });
-
                         if (!collectionsReady(container)) {
                             process(scope, element, attrs);
                         } else {
                             finalize(scope, element, attrs);
                         }
                     }
-
-                    Commons.log(3, ">>>>>>>>>>>>>>", container);
                 }
             }
         }
@@ -1054,14 +813,6 @@ app.service("znPageManager", ['Commons', function (Commons) {
         position.width = -width * index;
         position.height = -height * index;
 
-        Commons.log(3, {
-            "func": "Collection.getPosition",
-            "parentWidth": width,
-            "parentHeight": height,
-            "width": position.width,
-            "height": position.height
-        })
-
         return position;
     };
 
@@ -1095,11 +846,6 @@ app.service("znPageManager", ['Commons', function (Commons) {
     };
 
     Collection.prototype.updateBuffer = function (collection) {
-        Commons.log(2, {
-            "func": "Collection.updateBuffer",
-            "arguments": arguments
-        });
-
         if (!this.isDynamic()) {
             var active = Math.max(0, Math.min(this.activeIndex + this.numMoved, this.pages.length - 1));
             this.activeIndex = active;
@@ -1243,12 +989,6 @@ app.service("znPageManager", ['Commons', function (Commons) {
             ready = ready && this.collections[i].isReady();
         }
 
-        Commons.log(3, {
-            id: this.id,
-            count: count,
-            ready: ready
-        });
-
         return ready;
     };
 
@@ -1318,12 +1058,6 @@ app.service("znPageManager", ['Commons', function (Commons) {
         position.width = -this.width * index;
         position.height = -this.height * index;
 
-        Commons.log(3, {
-            "func": "Container.getPosition",
-            "width": position.width,
-            "height": position.height
-        });
-
         return position;
     };
 
@@ -1332,10 +1066,6 @@ app.service("znPageManager", ['Commons', function (Commons) {
     };
 
     Container.prototype.slideHome = function () {
-        Commons.log(2, {
-            "func": "Container.slideHome"
-        });
-
         this.numMoved = 0;
         this.activeIndex = this.startIndex;
         this.activeBufferIndex = this.startIndex;
@@ -1367,11 +1097,6 @@ app.service("znPageManager", ['Commons', function (Commons) {
     };
 
     Container.prototype.slideLeft = function () {
-        Commons.log(2, {
-            "func": "Container.slideLeft",
-            "arguments": arguments
-        });
-
         // 1. If column layout, slide left means showing column on right
         // 2. If row layout, slide left means showing the page on the right of the active row
         if (this.layout === "col") {
@@ -1382,11 +1107,6 @@ app.service("znPageManager", ['Commons', function (Commons) {
     };
 
     Container.prototype.slideRight = function () {
-        Commons.log(2, {
-            "func": "Container.slideRight",
-            "arguments": arguments
-        });
-
         // 1. If column layout, slide right means showing column on left
         // 2. If row layout, slide right means showing the page on the left of the active row
         if (this.layout === "col") {
@@ -1397,11 +1117,6 @@ app.service("znPageManager", ['Commons', function (Commons) {
     };
 
     Container.prototype.slideUp = function () {
-        Commons.log(2, {
-            "func": "Container.slideUp",
-            "arguments": arguments
-        });
-
         // 1. If column layout, slide up means showing page below in the active row
         // 2. If row layout, slide up means showing the row below
         if (this.layout === "col") {
@@ -1412,11 +1127,6 @@ app.service("znPageManager", ['Commons', function (Commons) {
     };
 
     Container.prototype.slideDown = function () {
-        Commons.log(2, {
-            "func": "Container.slideDown",
-            "arguments": arguments
-        });
-
         // 1. If column layout, slide down means showing page above in the active row
         // 2. If row layout, slide down means showing the row above
         if (this.layout === "col") {
@@ -1446,11 +1156,6 @@ app.service("znPageManager", ['Commons', function (Commons) {
         },
 
         container: function (id) {
-            Commons.log(2, {
-                "func": "znPageManager.container",
-                "arguments": arguments
-            });
-
             for (var i = 0; i < containers.length; i++) {
                 if (containers[i].getId() === id) {
                     return containers[i];
@@ -1527,19 +1232,12 @@ app.factory("Commons", [ function () {
         },
 
         slideTo: function (element, obj, animate) {
-            this.log(2, {
-                "func": "Commons.slideTo",
-                "arguments": arguments
-            });
-
             animate = (arguments.length < 3) ? true : animate;
 
             var id = obj.getId(),
                 layout = obj.attr("layout"),
                 active = Math.max(0, Math.min(obj.attr("activeBufferIndex") + obj.attr("numMoved"), obj.bufferLength() - 1)),
                 position = obj.getPosition(active);
-
-            this.log(3, position);
 
             if (id.match(/^zn-pages-container/)) {
                 // slide container
@@ -1561,13 +1259,6 @@ app.factory("Commons", [ function () {
         },
 
         slideX: function (element, width, animate) {
-            this.log(2, {
-                "func": "Commons.slideX",
-                "arguments": arguments,
-                "width": width,
-                "animate": animate
-            });
-
             if (animate === false) {
                 element.removeClass("zn-animate").addClass("zn-noanimate");
             } else {
@@ -1578,13 +1269,6 @@ app.factory("Commons", [ function () {
         },
 
         slideY: function (element, height, animate) {
-            this.log(2, {
-                "func": "Commons.slideY",
-                "arguments": arguments,
-                "height": height,
-                "animate": animate
-            });
-
             if (animate === false) {
                 element.removeClass("zn-animate").addClass("zn-noanimate");
             } else {
@@ -1595,11 +1279,6 @@ app.factory("Commons", [ function () {
         },
 
         whichTransitionEvent: function () {
-            this.log(2, {
-                "func": "Commons.whichTransitionEvent",
-                "arguments": arguments
-            });
-
             var el = document.createElement('fakeelement'),
                 transitions = {
                     'transition': 'transitionend',
@@ -1619,11 +1298,6 @@ app.factory("Commons", [ function () {
         },
 
         whichTransformCSS: function () {
-            this.log(2, {
-                "func": "Commons.whichTransformCSS",
-                "arguments": arguments
-            });
-
             var el = document.createElement('fakeelement'),
                 transforms = {
                     'transform': 'transform',
