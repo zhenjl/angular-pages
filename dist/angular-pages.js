@@ -385,7 +385,7 @@ app.directive("znPagesCollection", ['$compile', 'znPageManager', 'Commons', func
     }
 }]);
 
-app.directive("znPages", ['$compile', "znSwipe", 'znPageManager', 'Commons', function ($compile, znSwipe, znPageManager, Commons) {
+app.directive("znPages", ['$window', '$document', '$compile', "znSwipe", 'znPageManager', 'Commons', function ($window, $document, $compile, znSwipe, znPageManager, Commons) {
 
     function process() {
         var scope, element, attrs, phase;
@@ -601,7 +601,33 @@ app.directive("znPages", ['$compile', "znSwipe", 'znPageManager', 'Commons', fun
             })
         }
 
-        container.slideHome();
+        $window.onresize = function() {
+            scope.$apply(function() {
+                var width = element[0].offsetWidth,
+                    height = element[0].offsetHeight;
+
+                container.attr({
+                    "width": width,
+                    "height": height
+                });
+
+                container.slideReset();
+            });
+        };
+
+        $document.ready(function() {
+            scope.$apply(function() {
+                var width = element[0].offsetWidth,
+                    height = element[0].offsetHeight;
+
+                container.attr({
+                    "width": width,
+                    "height": height
+                });
+
+                container.slideHome();
+            });
+        });
 
         container.attr("ready", true);
 
